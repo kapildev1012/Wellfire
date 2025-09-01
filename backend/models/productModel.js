@@ -1,29 +1,50 @@
 import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema({
-    name: { type: String, required: true, trim: true },
-    description: { type: String, required: true },
-    price: { type: Number, required: true },
+        productTitle: { type: String, required: true, default: "Untitled Project" },
+        description: { type: String, required: true, default: "No description provided" },
+        artistName: { type: String, required: true, default: "Unknown Artist" },
+        producerName: { type: String, default: "" },
+        labelName: { type: String, default: "" },
 
-    image1: { type: String, required: true, match: /^https?:\/\// },
-    image2: { type: String, match: /^https?:\/\// },
-    image3: { type: String, match: /^https?:\/\// },
-    image4: { type: String, match: /^https?:\/\// },
+        category: { type: String, required: true, default: "Uncategorized" },
+        genre: { type: String, required: true, default: "General" },
 
-    category: { type: String, required: true },
-    subCategory: { type: String, required: true },
+        totalBudget: { type: Number, required: true, default: 0 },
+        minimumInvestment: { type: Number, required: true, default: 0 },
+        currentFunding: { type: Number, default: 0 },
+        investorCount: { type: Number, default: 0 },
 
-    sizes: [{
-        size: { type: String, required: true },
-        price: { type: Number, required: true },
-    }, ],
+        productStatus: {
+            type: String,
+            enum: [
+                "funding",
+                "pre-production",
+                "recording",
+                "post-production",
+                "marketing",
+                "completed",
+            ],
+            default: "funding",
+        },
 
-    bestseller: { type: Boolean, default: false },
-    inStock: { type: Boolean, default: true },
-    date: { type: Date, default: Date.now },
-});
+        expectedDuration: { type: String, default: "" },
+        targetAudience: [{ type: String, default: [] }],
 
-const productModel =
-    mongoose.models.Product || mongoose.model("Product", productSchema);
+        isFeatured: { type: Boolean, default: false },
+        isActive: { type: Boolean, default: true },
 
-export default productModel;
+        // Image URLs (stored after upload)
+        coverImage: { type: String, default: "" },
+        albumArt: { type: String, default: "" },
+        posterImage: { type: String, default: "" },
+        galleryImage: { type: String, default: "" },
+
+        // Audio file URLs
+        demoTrack: { type: String, default: "" },
+        fullTrack: { type: String, default: "" },
+    }, { timestamps: true } // ✅ replaces createdAt & updatedAt manually
+);
+
+const Product = mongoose.model("Product", productSchema);
+export default Product;

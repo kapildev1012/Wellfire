@@ -1,30 +1,29 @@
-import express from "express";
-import { addProduct, listProducts, removeProduct, singleProduct } from "../controllers/productController.js";
-import upload from "../middleware/multer.js";
-import adminAuth from "../middleware/adminAuth.js";
+import express from 'express';
+import { addProduct, listProducts, getProduct, updateProduct, removeProduct } from '../controllers/productController.js';
+import { addInvestment, getProductInvestments, getAllInvestments } from '../controllers/investorController.js';
+import adminAuth from '../middleware/adminAuth.js';
+import upload from '../middleware/multer.js';
 
-const router = express.Router();
+const productRouter = express.Router();
 
-// Add Product (with image upload)
-router.post(
-    "/add",
-    adminAuth,
-    upload.fields([
-        { name: "image1", maxCount: 1 },
-        { name: "image2", maxCount: 1 },
-        { name: "image3", maxCount: 1 },
-        { name: "image4", maxCount: 1 },
-    ]),
-    addProduct
-);
+// Product routes (temporarily removing adminAuth for testing)
+productRouter.post('/add', upload.fields([
+    { name: 'coverImage', maxCount: 1 },
+    { name: 'albumArt', maxCount: 1 },
+    { name: 'posterImage', maxCount: 1 },
+    { name: 'galleryImage', maxCount: 1 },
+    { name: 'demoTrack', maxCount: 1 },
+    { name: 'fullTrack', maxCount: 1 }
+]), addProduct);
 
-// Get All Products
-router.get("/list", listProducts);
+productRouter.get('/list', listProducts);
+productRouter.get('/:id', getProduct);
+productRouter.put('/update/:id', adminAuth, updateProduct);
+productRouter.delete('/remove/:id', adminAuth, removeProduct);
 
-// Get Single Product
-router.get("/:productId", singleProduct);
+// Investment routes
+productRouter.post('/invest', addInvestment);
+productRouter.get('/investments/:productId', getProductInvestments);
+productRouter.get('/investments', adminAuth, getAllInvestments);
 
-// Remove Product
-router.delete("/remove", adminAuth, removeProduct);
-
-export default router;
+export default productRouter;

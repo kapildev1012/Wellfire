@@ -1,160 +1,215 @@
+import Product from "../models/productModel.js";
+import Investor from "../models/investorModel.js";
 import { v2 as cloudinary } from "cloudinary";
-import productModel from "../models/productModel.js";
 
-// ✅ Helper: Upload Single Image
-const uploadImage = async(file) => {
-    if (!file || !file.path) return null;
-    const result = await cloudinary.uploader.upload(file.path, {
-        resource_type: "image",
-        folder: "products", // your Cloudinary folder
-    });
-    return result.secure_url;
-};
-
-// ✅ Add Product
+// Add new product
 const addProduct = async(req, res) => {
     try {
-        const {
-            name,
+        console.log("Request body:", req.body);
+        console.log("Request files:", req.files);
+
+        let {
+            productTitle,
             description,
-            price,
+            artistName,
+            producerName,
+            labelName,
             category,
-            subCategory,
-            sizes,
-            bestseller,
-            inStock,
+            genre,
+            totalBudget,
+            minimumInvestment,
+            expectedDuration,
+            productStatus,
+            targetAudience,
+            isFeatured,
+            isActive,
         } = req.body;
 
-        // ✅ Parse sizes
-        let parsedSizes = [];
-        try {
-            parsedSizes = typeof sizes === "string" ? JSON.parse(sizes) : sizes;
+        // ✅ Provide defaults if missing (to avoid validation error)
+        if (!productTitle) productTitle = "Untitled Project";
+        if (!description) description = "No description provided";
+        if (!artistName) artistName = "Unknown Artist";
 
-            if (!Array.isArray(parsedSizes) || parsedSizes.length === 0) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Sizes must be a non-empty array.",
+        // ✅ Parse targetAudience if needed
+        let parsedAudience = [];
+        try {
+            parsedAudience =
+                typeof targetAudience === "string" ?
+                JSON.parse(targetAudience) :
+                targetAudience || [];
+        } catch (error) {
+            parsedAudience = [];
+        }
+
+        // ✅ Handle file uploads (Multer OR express-fileupload)
+        const uploadResults = {};
+        const imageFields = ["coverImage", "albumArt", "posterImage", "galleryImage"];
+        for (const field of imageFields) {
+            if (req.files && req.files[field]) {
+                const filePath = Array.isArray(req.files[field]) ?
+                    req.files[field][0].path :
+                    req.files[field].tempFilePath || req.files[field].path;
+
+                const result = await cloudinary.uploader.upload(filePath, {
+                    resource_type: "image",
+                    folder: "music-products/images",
                 });
+                uploadResults[field] = result.secure_url;
             }
 
-            parsedSizes = parsedSizes.map((entry) => ({
-                size: entry.size,
-                price: Number(entry.price),
-            }));
-        } catch (err) {
-            return res.status(400).json({
-                success: false,
-                message: "Invalid sizes format. Expecting JSON or array.",
-            });
         }
 
-        const image1 = req.files ? req.files.image1 : null;
-        const image2 = req.files ? req.files.image2 : null;
-        const image3 = req.files ? req.files.image3 : null;
-        const image4 = req.files ? req.files.image4 : null;
-
-        if (!image1) {
-            return res.status(400).json({
-                success: false,
-                message: "Image1 is required.",
-            });
-        } // ✅ Determine base price
-        let basePrice = null;
-        if (price && !isNaN(Number(price))) {
-            basePrice = Number(price);
-        } else {
-            const numericPrices = parsedSizes
-                .map((s) => Number(s.price))
-                .filter((p) => !isNaN(p));
-            basePrice = numericPrices.length > 0 ? Math.min(...numericPrices) : 0;
+        const audioFields = ["demoTrack", "fullTrack"];
+        for (const field of audioFields) {
+            if (req.files && req.files[field]) {
+                const filePath =
+                    req.files[field][0]?.path || req.files[field].tempFilePath;
+                const result = await cloudinary.uploader.upload(filePath, {
+                    resource_type: "video", // Cloudinary uses video pipeline for audio
+                    folder: "music-products/audio",
+                });
+                uploadResults[field] = result.secure_url;
+            }
         }
 
-        // ✅ Create and save product
-        const newProduct = new productModel({
-            name,
+        // ✅ Construct product data
+        const productData = {
+            productTitle,
             description,
-            price: basePrice,
+            artistName,
+            producerName,
+            labelName,
             category,
-            subCategory,
-            bestseller: bestseller === "true" || bestseller === true,
-            inStock: inStock === "true" || inStock === true,
-            sizes: parsedSizes,
-            image1,
-            image2,
-            image3,
-            image4,
-            date: new Date(),
-        });
+            genre,
+            totalBudget: Number(totalBudget) || 0,
+            minimumInvestment: Number(minimumInvestment) || 0,
+            expectedDuration,
+            productStatus: productStatus || "funding",
+            targetAudience: parsedAudience,
+            isFeatured: isFeatured === "true" || isFeatured === true,
+            isActive: isActive === "true" || isActive === true,
+            ...uploadResults,
+        };
 
-        await newProduct.save();
+        console.log("Product data to save:", productData);
 
-        res.status(201).json({
+        const product = new Product(productData);
+        await product.save();
+
+        return res.status(201).json({
             success: true,
-            message: "Product added successfully.",
-            product: newProduct,
+            message: "Product added successfully",
+            product,
         });
     } catch (error) {
-        console.error("❌ Add Product Error:", error);
-        res.status(500).json({
+        console.error("Add product error:", error);
+        return res.status(500).json({
             success: false,
-            message: "Server error while adding product.",
+            message: error.message || "Internal Server Error",
         });
     }
 };
 
-// ✅ List Products
+// List products
 const listProducts = async(req, res) => {
     try {
-        const products = await productModel.find({});
-        res.status(200).json({ success: true, products });
+        const products = await Product.find({}).sort({ createdAt: -1 });
+
+        const productsWithFunding = products.map((product) => {
+            const fundingPercentage =
+                product.totalBudget > 0 ?
+                Math.min((product.currentFunding / product.totalBudget) * 100, 100) :
+                0;
+
+            return {
+                ...product.toObject(),
+                fundingPercentage: fundingPercentage.toFixed(1),
+            };
+        });
+
+        res.json({ success: true, products: productsWithFunding });
     } catch (error) {
-        console.error("❌ List Products Error:", error);
+        console.error("List products error:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// ✅ Remove Product
+// Get single product
+const getProduct = async(req, res) => {
+    try {
+        const { id } = req.params;
+        const product = await Product.findById(id);
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        const investors = await Investor.find({
+            productId: id,
+            paymentStatus: "completed",
+        });
+
+        const fundingPercentage =
+            product.totalBudget > 0 ?
+            Math.min((product.currentFunding / product.totalBudget) * 100, 100) :
+            0;
+
+        res.json({
+            success: true,
+            product: {
+                ...product.toObject(),
+                fundingPercentage: fundingPercentage.toFixed(1),
+                investors: investors.length,
+            },
+        });
+    } catch (error) {
+        console.error("Get product error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Update product
+const updateProduct = async(req, res) => {
+    try {
+        const { id } = req.params;
+        const updates = req.body;
+
+        if (updates.targetAudience && typeof updates.targetAudience === "string") {
+            try {
+                updates.targetAudience = JSON.parse(updates.targetAudience);
+            } catch (error) {
+                updates.targetAudience = [];
+            }
+        }
+
+        updates.updatedAt = Date.now();
+
+        const product = await Product.findByIdAndUpdate(id, updates, { new: true });
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        res.json({ success: true, message: "Product updated successfully", product });
+    } catch (error) {
+        console.error("Update product error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// Delete product
 const removeProduct = async(req, res) => {
     try {
-        const { id } = req.body;
-        if (!id) {
-            return res
-                .status(400)
-                .json({ success: false, message: "Product ID is required." });
-        }
+        const { id } = req.params;
 
-        await productModel.findByIdAndDelete(id);
-        res
-            .status(200)
-            .json({ success: true, message: "Product removed successfully." });
+        await Investor.deleteMany({ productId: id });
+        await Product.findByIdAndDelete(id);
+
+        res.json({ success: true, message: "Product removed successfully" });
     } catch (error) {
-        console.error("❌ Remove Product Error:", error);
+        console.error("Remove product error:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 };
 
-// ✅ Single Product by ID
-const singleProduct = async(req, res) => {
-    try {
-        const { productId } = req.params; // 🔥 use params, not body
-        if (!productId) {
-            return res
-                .status(400)
-                .json({ success: false, message: "Product ID is required." });
-        }
-
-        const product = await productModel.findById(productId);
-        if (!product) {
-            return res
-                .status(404)
-                .json({ success: false, message: "Product not found." });
-        }
-
-        res.status(200).json({ success: true, product });
-    } catch (error) {
-        console.error("❌ Single Product Error:", error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-};
-
-export { addProduct, listProducts, removeProduct, singleProduct };
+export { addProduct, listProducts, getProduct, updateProduct, removeProduct };

@@ -1,3 +1,4 @@
+// backend/middleware/multer.js (Updated)
 import multer from "multer";
 import path from "path";
 
@@ -12,28 +13,52 @@ const storage = multer.diskStorage({
     },
 });
 
-// ✅ Filter only image types
+// ✅ Filter for images and audio files
 const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|webp|gif/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
+    const imageTypes = /jpeg|jpg|png|webp|gif/;
+    const audioTypes = /mp3|wav|flac|aac|ogg|m4a/;
+    const videoTypes = /mp4|mov|avi|mkv/; // For demo videos
 
-    if (extname && mimetype) {
+    const extname = path.extname(file.originalname).toLowerCase();
+    const mimetype = file.mimetype;
+
+    // Check for images
+    const isImage = imageTypes.test(extname) && mimetype.startsWith('image/');
+
+    // Check for audio
+    const isAudio = audioTypes.test(extname) && mimetype.startsWith('audio/');
+
+    // Check for video
+    const isVideo = videoTypes.test(extname) && mimetype.startsWith('video/');
+
+    if (isImage || isAudio || isVideo) {
         return cb(null, true);
     } else {
-        cb(new Error("Only image files are allowed (jpeg, jpg, png, webp, gif)."));
+        cb(new Error(`Unsupported file type. Allowed: Images (${imageTypes.source}), Audio (${audioTypes.source}), Video (${videoTypes.source})`));
     }
 };
 
-// ✅ Max file size: 5MB
+// ✅ Different size limits based on file type
 const limits = {
-    fileSize: 5 * 1024 * 1024, // 5MB
+    fileSize: (req, file) => {
+        if (file.mimetype.startsWith('image/')) {
+            return 5 * 1024 * 1024; // 5MB for images
+        } else if (file.mimetype.startsWith('audio/')) {
+            return 50 * 1024 * 1024; // 50MB for audio
+        } else if (file.mimetype.startsWith('video/')) {
+            return 100 * 1024 * 1024; // 100MB for videos
+        }
+        return 5 * 1024 * 1024; // Default 5MB
+    },
 };
 
 const upload = multer({
     storage,
     fileFilter,
-    limits,
+    limits: {
+        fileSize: 100 * 1024 * 1024, // Max 100MB (will be handled by file type)
+        files: 20, // Max 20 files per request
+    },
 });
 
 export default upload;
