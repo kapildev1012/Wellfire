@@ -357,9 +357,9 @@ const NetflixPortfolio = () => {
         </div>
 
         {/* Content Grid - Responsive Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-2 xs:gap-3 sm:gap-4 h-[200px] xs:h-[250px] sm:h-[300px] md:h-[350px] lg:h-[450px]">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 xs:gap-4 sm:gap-8 lg:gap-8">
           {/* Featured Video Player */}
-          <div className="lg:col-span-3 relative rounded xs:rounded-lg sm:rounded-xl overflow-hidden bg-gray-900 group cursor-pointer">
+          <div className="lg:col-span-3 relative rounded-lg xs:rounded-xl sm:rounded-2xl overflow-hidden bg-gray-900 group cursor-pointer shadow-2xl aspect-video">
             {data.videos.map((video, index) => (
               <VideoPlayer
                 key={index}
@@ -371,7 +371,7 @@ const NetflixPortfolio = () => {
             ))}
 
             {/* Video Navigation */}
-            <div className="absolute top-1.5 xs:top-2 sm:top-4 right-1.5 xs:right-2 sm:right-4 flex gap-1 xs:gap-1 sm:gap-1 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 z-10">
+            <div className="absolute top-2 xs:top-2 sm:top-4.5 right-1.5 xs:right-2 sm:right-4 flex gap-1 xs:gap-1 sm:gap-1 opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 z-10">
               {data.videos.map((_, index) => (
                 <button
                   key={index}
@@ -420,7 +420,7 @@ const NetflixPortfolio = () => {
           </div>
 
           {/* Image Gallery */}
-          <div className="lg:col-span-2 grid grid-cols-2 lg:grid-cols-1 gap-1.5 xs:gap-2 sm:gap-4">
+          <div className="lg:col-span-2 grid grid-cols-2 lg:grid-cols-1 gap-2 xs:gap-3 sm:gap-4 lg:gap-6">
             {data.images.map((image, index) => (
               <ImageCard
                 key={index}
@@ -447,10 +447,10 @@ const NetflixPortfolio = () => {
             <div className="w-1.5 h-1.5 xs:w-2 xs:h-2 sm:w-3 sm:h-3 bg-red-600 rounded-full animate-pulse" />
             <div className="w-1.5 h-1.5 xs:w-2 xs:h-2 sm:w-3 sm:h-3 bg-red-600 rounded-full animate-pulse" />
           </div>
-          <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 xs:mb-4 sm:mb-6">
-            <span className="text-white">Our</span>{" "}
-            <span className="text-red-600">Creative</span>{" "}
-            <span className="text-white">Work</span>
+          <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-bold mb-3 xs:mb-4 sm:mb-6">
+            <span className="text-white">OUR</span>{" "}
+            
+            <span className="text-white">WORK</span>
           </h1>
           <p className="text-gray-300 text-xs xs:text-sm sm:text-base md:text-lg lg:text-xl max-w-4xl mx-auto leading-relaxed px-2 xs:px-4">
             Discover our portfolio of exceptional content across music, film,

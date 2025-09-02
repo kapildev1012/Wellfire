@@ -80,7 +80,7 @@ const addInvestmentProduct = async(req, res) => {
         const audioFields = ["demoTrack", "fullTrack"];
         for (const field of audioFields) {
             if (req.files && req.files[field]) {
-                const filePath = req.files[field][0] ? .path || req.files[field].tempFilePath;
+                const filePath = req.files[field][0]?.path || req.files[field].tempFilePath;
                 const result = await cloudinary.uploader.upload(filePath, {
                     resource_type: "video", // Cloudinary uses video pipeline for audio
                     folder: "investment-products/audio",
@@ -364,7 +364,7 @@ const getFundingAnalytics = async(req, res) => {
                     totalProducts,
                     activeProducts,
                     fundingProducts,
-                    totalInvestment: totalInvestments[0] ? .total || 0,
+                    totalInvestment: totalInvestments[0]?.total || 0,
                     totalInvestors,
                 },
                 categoryStats,
