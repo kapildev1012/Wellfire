@@ -1,13 +1,14 @@
-// backend/server.js (Updated)
+// backend/server.js (Fixed)
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
 import connectDB from "./config/mongodb.js";
-import connectCloudinary from "./config/cloudinary.js";
+import connectCloudinary from "./config/Cloudinary.js";
+import upload from "./middleware/multer.js"; // ✅ Added missing import
 
 // Routes
 import userRouter from "./routes/userRoute.js";
-import productRouter from "./routes/productRoute.js";
+
 import cartRouter from "./routes/cartRoute.js";
 import orderRouter from "./routes/orderRoute.js";
 import investmentProductRouter from "./routes/investmentProductRoute.js";
@@ -22,7 +23,8 @@ connectDB();
 connectCloudinary();
 
 // Middlewares
-app.use(express.json());
+app.use(express.json({ limit: '50mb' })); // ✅ Increased limit
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); // ✅ Added urlencoded
 app.use(cors());
 
 // Create uploads directory if it doesn't exist
@@ -31,15 +33,16 @@ import path from 'path';
 const uploadDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
+    console.log("✅ Uploads directory created");
 }
 
 // API Endpoints
 app.use("/api/user", userRouter);
-app.use("/api/product", productRouter);
+
 app.use("/api/cart", cartRouter);
 app.use("/api/order", orderRouter);
 
-// ✅ New Investment APIs
+// ✅ Investment APIs
 app.use("/api/investment-product", investmentProductRouter);
 app.use("/api/investor", investorRouter);
 
@@ -55,13 +58,13 @@ app.use((error, req, res, next) => {
         if (error.code === 'LIMIT_FILE_SIZE') {
             return res.status(400).json({
                 success: false,
-                message: "File too large. Check file size limits.",
+                message: "File too large. Maximum size is 100MB per file.",
             });
         }
         if (error.code === 'LIMIT_FILE_COUNT') {
             return res.status(400).json({
                 success: false,
-                message: "Too many files uploaded.",
+                message: "Too many files uploaded. Maximum 15 files allowed.",
             });
         }
     }
