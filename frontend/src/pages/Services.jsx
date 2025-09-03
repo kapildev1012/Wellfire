@@ -1,100 +1,111 @@
-import React from "react";
+import React, { useContext, useEffect, useState } from "react";
+import { ShopContext } from "../context/ShopContext";
 import { motion } from "framer-motion";
-import { Film, Camera, Landmark } from "lucide-react"; // icons
-import NewsletterBox from "../components/NewsletterBox";
+import { useNavigate } from "react-router-dom";
+
 const Services = () => {
-  return (
-    <div className="bg-black text-white px-6 md:px-16 lg:px-24 py-16">
-      {/* Services Head */}
-      <motion.h2
-        initial={{ opacity: 0, y: 30 }}
+  const { products } = useContext(ShopContext);
+  const [latest, setLatest] = useState({
+    music: null,
+    film: null,
+    commercial: null,
+  });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const getLatest = (category) => {
+      return (
+        products
+          ?.filter(
+            (item) =>
+              item.category?.toLowerCase() === category.toLowerCase() ||
+              item.subCategory?.toLowerCase() === category.toLowerCase()
+          )
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] ||
+        null
+      );
+    };
+
+    setLatest({
+      music: getLatest("music"),
+      film: getLatest("film"),
+      commercial: getLatest("commercial"),
+    });
+  }, [products]);
+
+  const ServiceCard = ({ product, title, target, description }) => {
+    if (!product) return null;
+    return (
+      <motion.div
+        className="flex flex-col gap-4 cursor-pointer"
+        initial={{ opacity: 0, y: 40 }}
         whileInView={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
         viewport={{ once: true }}
-        className="text-3xl md:text-5xl font-bold text-center mb-12"
+        onClick={() => navigate(`/latestcollection1#${target}`)}
       >
-        Our Services
-      </motion.h2>
+        {/* Product Image */}
+        <img
+          src={product.image}
+          alt={product.name}
+          className="w-full h-56 sm:h-64 lg:h-72 object-cover rounded-2xl shadow-md"
+        />
 
-      {/* Services Grid */}
-      <div className="grid md:grid-cols-3 gap-10">
-        {/* Media Production */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="bg-gray-900 rounded-2xl p-6 shadow-lg"
-        >
-          <Film className="w-12 h-12 text-red-500 mb-4" />
-          <h3 className="text-xl font-semibold mb-3">Media Production</h3>
-          <p className="text-gray-300">
-            We create original films, series, and digital media that spark
-            ideas, inspire audiences, and push creative boundaries.
-          </p>
-        </motion.div>
+        {/* Title */}
+        <h3 className="text-lg sm:text-xl font-bold uppercase">
+          {product.name}
+        </h3>
 
-        {/* Line Production */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          viewport={{ once: true }}
-          className="bg-gray-900 rounded-2xl p-6 shadow-lg"
-        >
-          <Camera className="w-12 h-12 text-blue-500 mb-4" />
-          <h3 className="text-xl font-semibold mb-3">
-            Line Production Services
-          </h3>
-          <p className="text-gray-300 mb-2">
-            Beyond our own projects, we offer line production services to
-            filmmakers, studios, and production houses worldwide.
-          </p>
-          <p className="text-gray-400 text-sm">
-            🌍 Operating across USA, Canada, UK, UAE, Bahrain, India, and
-            Australia.
-          </p>
-        </motion.div>
+        {/* Description (3 lines on mobile, full on larger screens) */}
+        <p className="text-gray-600 text-sm sm:text-base leading-relaxed line-clamp-3 md:line-clamp-none">
+          {description}
+        </p>
+      </motion.div>
+    );
+  };
 
-        {/* Government Subsidy */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4 }}
-          viewport={{ once: true }}
-          className="bg-gray-900 rounded-2xl p-6 shadow-lg"
-        >
-          <Landmark className="w-12 h-12 text-green-500 mb-4" />
-          <h3 className="text-xl font-semibold mb-3">
-            Government Subsidy Guidance
-          </h3>
-          <p className="text-gray-300 mb-2">
-            We help you access subsidies and incentives when producing
-            internationally — making your project financially efficient while
-            keeping quality uncompromised.
+  return (
+    <section className="bg-gray-50 px-6 md:px-16 lg:px-24 py-16 md:py-20">
+      <div className="grid md:grid-cols-4 gap-12">
+        {/* Left Intro */}
+        <div>
+          <h2 className="text-3xl sm:text-4xl font-bold mb-6">Services</h2>
+          <p className="text-gray-600 mb-6 text-sm sm:text-base leading-relaxed">
+            Explore our latest highlights in Films, Music, and Commercials. Each
+            category showcases our newest work, blending creativity, vision, and
+            innovation to deliver outstanding experiences.
           </p>
-        </motion.div>
+          <a
+            href="mailto:info.wellfire@gmail.com"
+            className="font-semibold text-gray-900 border-b-2 border-red-500 inline-block"
+          >
+            Get in touch
+          </a>
+        </div>
+
+        {/* Right Side - Service Cards */}
+        <div className="md:col-span-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-10">
+          <ServiceCard
+            product={latest.film}
+            title="Films"
+            target="films"
+            description="Our films explore powerful stories with stunning visuals and emotion. From short films to feature productions, we focus on creativity and storytelling that connects with audiences and leaves a lasting impression."
+          />
+          <ServiceCard
+            product={latest.music}
+            title="Music"
+            target="music"
+            description="We create original music that inspires, moves, and resonates. From cinematic scores to modern tracks, our music production blends creativity with emotion to deliver unique soundscapes for every project."
+          />
+          <ServiceCard
+            product={latest.commercial}
+            title="Commercials"
+            target="commercials"
+            description="Our commercials bring brands to life with bold ideas and striking visuals. We craft campaigns that resonate emotionally, engage audiences, and make brands stand out in today’s competitive marketplace."
+          />
+        </div>
       </div>
-
-      {/* CTA Buttons */}
-      <div className="flex justify-center gap-6 mt-12">
-        <a
-          href="mailto:info.wellfire@gmail.com"
-          className="bg-red-700 hover:bg-red-700 rounded-2xl px-6 py-2 font-medium transition"
-        >
-          Work With Us
-        </a>
-        <a
-          href="https://wa.me/917506312117"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-red-700 hover:bg-red-700 rounded-2xl px-6 py-2 font-medium transition"
-        >
-          Contact Us
-        </a>
-      </div>
-   
-    </div>
+    </section>
   );
 };
 

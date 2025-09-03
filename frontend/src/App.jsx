@@ -13,7 +13,7 @@ import Services from "./pages/Services";
 import About from "./pages/About";
 import Cart from "./pages/Cart";
 import Collection from "./pages/Collection";
-import LatestCollection1 from "./components/LatestCollection1";
+import LatestCollection2 from "./components/LatestCollection2";
 import Contact from "./pages/Contact";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -22,7 +22,7 @@ import PlaceOrder from "./pages/PlaceOrder";
 import Product from "./pages/Product";
 import Verify from "./pages/Verify";
 import CategoryPage from "./pages/CategoryPage";
-import LatestCollection from "./components/LatestCollection";
+import LatestCollection1 from "./components/LatestCollection1";
 
 const App = () => {
   return (
@@ -59,7 +59,7 @@ const App = () => {
           <Route path="/category/:categoryName" element={<CategoryPage />} />
           <Route path="/services" element={<Services />} />
           <Route path="/Latestcollection1" element={<LatestCollection1 />} />
-          <Route path="/Latestcollection" element={<LatestCollection />} />
+          <Route path="/Latestcollection2" element={<LatestCollection2 />} />
         </Routes>
 
         <Footer />

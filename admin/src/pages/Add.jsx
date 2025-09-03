@@ -5,67 +5,84 @@ import { backendUrl } from "../App";
 import { toast } from "react-toastify";
 
 const Add = ({ token }) => {
-  // Poster upload
-  const [poster, setPoster] = useState(false);
+  const [image1, setImage1] = useState(false);
+  const [image2, setImage2] = useState(false);
+  const [image3, setImage3] = useState(false);
+  const [image4, setImage4] = useState(false);
 
-  // Product fields
-  const [title, setTitle] = useState("");
+  const [videoThumbnail, setVideoThumbnail] = useState(false);
+  const [youtubeLink, setYoutubeLink] = useState("");
+
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [targetAmount, setTargetAmount] = useState("");
-  const [raisedAmount, setRaisedAmount] = useState(0); // not in schema but can keep if needed
+  const [price, setPrice] = useState("");
   const [category, setCategory] = useState("");
-  const [duration, setDuration] = useState(""); // not in schema
-  const [director, setDirector] = useState(""); // not in schema
-  const [status, setStatus] = useState("Concept"); // not in schema
+  const [subCategory, setSubCategory] = useState("");
+  const [slots, setSlots] = useState(0);
+  const [sizes, setSizes] = useState([]);
 
-  const statusOptions = ["Concept", "In Production", "Completed"];
-  const categoryOptions = ["Sci-Fi", "Drama", "Action", "Documentary", "Music"];
+  // ✅ Categories
+  const categoryMap = {
+    "Live Production Project": ["Event", "Concert", "Festival"],
+    "Abroad Project": ["Film", "Documentary", "Music"],
+    "Latest Project": ["Film", "Music", "Ad"],
+    "Upcoming Project": ["Film", "Music", "Commercial"],
+  };
+
+  // ✅ Handle Slots Generation
+  const generateSlots = (totalPrice, slotCount) => {
+    if (!totalPrice || !slotCount) return [];
+    const perSlot = totalPrice / slotCount;
+    return Array.from({ length: slotCount }, (_, i) => ({
+      slot: i + 1,
+      price: perSlot,
+    }));
+  };
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
-
     try {
       const formData = new FormData();
-
-      // ✅ match your productModel
-      formData.append("name", title);
+      formData.append("name", name);
       formData.append("description", description);
-      formData.append("price", targetAmount);
+      formData.append("price", price);
       formData.append("category", category);
-      formData.append("subCategory", "General"); // default for now
-      formData.append(
-        "sizes",
-        JSON.stringify([{ size: "Default", price: targetAmount }])
-      );
+      formData.append("subCategory", subCategory);
+      formData.append("sizes", JSON.stringify(sizes));
+      formData.append("youtubeLink", youtubeLink);
 
-      if (poster) {
-        formData.append("poster", poster); // backend should use req.files.poster
-      }
+      if (image1) formData.append("image1", image1);
+      if (image2) formData.append("image2", image2);
+      if (image3) formData.append("image3", image3);
+      if (image4) formData.append("image4", image4);
+      if (videoThumbnail) formData.append("videoThumbnail", videoThumbnail);
 
       const response = await axios.post(
-        backendUrl + "/api/product/add",
+        `${backendUrl}/api/product/add`,
         formData,
         { headers: { token } }
       );
 
       if (response.data.success) {
         toast.success(response.data.message);
-        // Reset fields
-        setTitle("");
+        setName("");
         setDescription("");
-        setTargetAmount("");
-        setRaisedAmount(0);
+        setPrice("");
         setCategory("");
-        setDuration("");
-        setDirector("");
-        setStatus("Concept");
-        setPoster(false);
+        setSubCategory("");
+        setSizes([]);
+        setSlots(0);
+        setYoutubeLink("");
+        setImage1(false);
+        setImage2(false);
+        setImage3(false);
+        setImage4(false);
+        setVideoThumbnail(false);
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      console.error("❌ Add product error:", error);
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.message);
     }
   };
 
@@ -74,79 +91,179 @@ const Add = ({ token }) => {
       onSubmit={onSubmitHandler}
       className="flex flex-col w-full items-start gap-3"
     >
-      {/* Upload Poster */}
+      {/* Image Upload */}
       <div>
-        <p className="mb-2">Upload Poster</p>
-        <label htmlFor="poster">
+        <p className="mb-2">Upload Images</p>
+        <div className="flex gap-2">
+          {[setImage1, setImage2, setImage3, setImage4].map(
+            (setImage, index) => (
+              <label key={index} htmlFor={`image${index + 1}`}>
+                <img
+                  className="w-20"
+                  src={
+                    !eval(`image${index + 1}`)
+                      ? assets.upload_area
+                      : URL.createObjectURL(eval(`image${index + 1}`))
+                  }
+                  alt=""
+                />
+                <input
+                  onChange={(e) => setImage(e.target.files[0])}
+                  type="file"
+                  id={`image${index + 1}`}
+                  hidden
+                />
+              </label>
+            )
+          )}
+        </div>
+      </div>
+
+      {/* Video Upload */}
+      <div>
+        <p className="mb-2">Upload Video Thumbnail</p>
+        <label htmlFor="videoThumbnail">
           <img
-            className="w-40 h-56 object-cover border rounded"
-            src={!poster ? assets.upload_area : URL.createObjectURL(poster)}
-            alt="poster"
+            className="w-20"
+            src={
+              !videoThumbnail
+                ? assets.upload_area
+                : URL.createObjectURL(videoThumbnail)
+            }
+            alt=""
+          />
+          <input
+            onChange={(e) => setVideoThumbnail(e.target.files[0])}
+            type="file"
+            id="videoThumbnail"
+            hidden
           />
         </label>
+
+        <p className="mt-2 mb-1">YouTube Link</p>
         <input
-          onChange={(e) => setPoster(e.target.files[0])}
-          type="file"
-          id="poster"
-          hidden
+          type="text"
+          value={youtubeLink}
+          onChange={(e) => setYoutubeLink(e.target.value)}
+          className="w-full max-w-[500px] px-3 py-2"
+          placeholder="Paste YouTube link"
         />
       </div>
 
-      {/* Title */}
+      {/* Name */}
       <div className="w-full">
-        <p className="mb-2">Product Title</p>
+        <p className="mb-2">Project Name</p>
         <input
-          onChange={(e) => setTitle(e.target.value)}
-          value={title}
-          className="w-full max-w-[500px] px-3 py-2"
           type="text"
-          placeholder="e.g. Digital Dreams"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full max-w-[500px] px-3 py-2"
+          placeholder="Type here"
           required
         />
       </div>
 
       {/* Description */}
       <div className="w-full">
-        <p className="mb-2">Description</p>
+        <p className="mb-2">Project Description</p>
         <textarea
-          onChange={(e) => setDescription(e.target.value)}
           value={description}
+          onChange={(e) => setDescription(e.target.value)}
           className="w-full max-w-[500px] px-3 py-2"
-          placeholder="Write product description here"
+          placeholder="Write content here"
           required
         />
       </div>
 
-      {/* Category */}
-      <div className="w-full sm:w-1/3">
-        <p className="mb-2">Category</p>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="w-full px-3 py-2"
-          required
-        >
-          <option value="">Select Category</option>
-          {categoryOptions.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
+      {/* Category, Subcategory, Price */}
+      <div className="flex flex-col sm:flex-row gap-2 w-full sm:gap-8">
+        <div>
+          <p className="mb-2">Category</p>
+          <select
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setSubCategory("");
+              setSizes([]);
+            }}
+            className="w-full px-3 py-2"
+            required
+          >
+            <option value="">Select Category</option>
+            {Object.keys(categoryMap).map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <p className="mb-2">Sub Category</p>
+          <select
+            value={subCategory}
+            onChange={(e) => {
+              setSubCategory(e.target.value);
+              setSizes([]);
+            }}
+            className="w-full px-3 py-2"
+            disabled={!category}
+            required
+          >
+            <option value="">Select Sub Category</option>
+            {category &&
+              categoryMap[category].map((sub) => (
+                <option key={sub} value={sub}>
+                  {sub}
+                </option>
+              ))}
+          </select>
+        </div>
+
+        <div>
+          <p className="mb-2">Total Project Cost</p>
+          <input
+            type="number"
+            value={price}
+            onChange={(e) => {
+              setPrice(e.target.value);
+              setSizes(generateSlots(e.target.value, slots));
+            }}
+            className="w-full px-3 py-2 sm:w-[150px]"
+            placeholder="Enter Price"
+            required
+          />
+        </div>
+
+        <div>
+          <p className="mb-2">Number of Slots</p>
+          <input
+            type="number"
+            value={slots}
+            onChange={(e) => {
+              setSlots(e.target.value);
+              setSizes(generateSlots(price, e.target.value));
+            }}
+            className="w-full px-3 py-2 sm:w-[150px]"
+            placeholder="Enter Slots"
+            required
+          />
+        </div>
       </div>
 
-      {/* Price */}
-      <div className="w-full sm:w-1/3">
-        <p className="mb-2">Price (₹)</p>
-        <input
-          onChange={(e) => setTargetAmount(e.target.value)}
-          value={targetAmount}
-          className="w-full px-3 py-2"
-          type="number"
-          placeholder="e.g. 2000000"
-          required
-        />
-      </div>
+      {/* Slots Preview */}
+      {sizes.length > 0 && (
+        <div className="mt-3">
+          <p className="mb-2">Generated Slots</p>
+          <div className="flex flex-wrap gap-2">
+            {sizes.map((slot) => (
+              <div key={slot.slot} className="px-3 py-1 bg-slate-200 rounded">
+                Slot {slot.slot}: ₹{slot.price}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Submit */}
       <button
