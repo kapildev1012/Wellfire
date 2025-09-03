@@ -1,11 +1,25 @@
 import userModel from "../models/userModel.js";
 
-// ✅ Add products to user cart
 const addToCart = async(req, res) => {
     try {
-        const { userId, itemId, size, quantity = 1 } = req.body;
+        const { userId, itemId, size = "default", quantity = 1 } = req.body;
+
+        // ✅ Validate required fields
+        if (!userId || !itemId) {
+            return res.json({
+                success: false,
+                message: "User ID and Item ID are required"
+            });
+        }
 
         const userData = await userModel.findById(userId);
+        if (!userData) {
+            return res.json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
         let cartData = userData.cartData || {};
 
         // Initialize item if not present
@@ -15,33 +29,46 @@ const addToCart = async(req, res) => {
 
         // Add quantity to the selected size
         if (cartData[itemId][size]) {
-            cartData[itemId][size] += quantity;
+            cartData[itemId][size] += Number(quantity);
         } else {
-            cartData[itemId][size] = quantity;
+            cartData[itemId][size] = Number(quantity);
         }
 
         await userModel.findByIdAndUpdate(userId, { cartData });
 
         res.json({ success: true, message: "Added to cart successfully" });
     } catch (error) {
-        console.log(error);
+        console.error("Add to cart error:", error);
         res.json({ success: false, message: error.message });
     }
 };
 
-// ✅ Update quantity in cart
 const updateCart = async(req, res) => {
     try {
         const { userId, itemId, size, quantity } = req.body;
 
+        if (!userId || !itemId || !size) {
+            return res.json({
+                success: false,
+                message: "Missing required fields"
+            });
+        }
+
         const userData = await userModel.findById(userId);
+        if (!userData) {
+            return res.json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
         let cartData = userData.cartData || {};
 
         // Handle edge cases
         if (!cartData[itemId]) cartData[itemId] = {};
 
-        if (quantity > 0) {
-            cartData[itemId][size] = quantity;
+        if (Number(quantity) > 0) {
+            cartData[itemId][size] = Number(quantity);
         } else {
             delete cartData[itemId][size];
             if (Object.keys(cartData[itemId]).length === 0) {
@@ -52,22 +79,35 @@ const updateCart = async(req, res) => {
         await userModel.findByIdAndUpdate(userId, { cartData });
         res.json({ success: true, message: "Cart Updated" });
     } catch (error) {
-        console.log(error);
+        console.error("Update cart error:", error);
         res.json({ success: false, message: error.message });
     }
 };
 
-// ✅ Get user cart data
 const getUserCart = async(req, res) => {
     try {
         const { userId } = req.body;
 
+        if (!userId) {
+            return res.json({
+                success: false,
+                message: "User ID is required"
+            });
+        }
+
         const userData = await userModel.findById(userId);
+        if (!userData) {
+            return res.json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
         let cartData = userData.cartData || {};
 
         res.json({ success: true, cartData });
     } catch (error) {
-        console.log(error);
+        console.error("Get cart error:", error);
         res.json({ success: false, message: error.message });
     }
 };

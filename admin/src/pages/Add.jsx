@@ -1,26 +1,28 @@
-import React, { useState } from "react";
-import { assets } from "../assets/assets";
 import axios from "axios";
-import { backendUrl } from "../App";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
+import { assets } from "../assets/assets";
+
+// Define backend URL - you can move this to a config file
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 const AddInvestmentProduct = ({ token }) => {
-  // Basic Images
-  const [coverImage, setCoverImage] = useState(false);
-  const [albumArt, setAlbumArt] = useState(false);
-  const [posterImage, setPosterImage] = useState(false);
+  // Basic Images - initialize as null instead of false
+  const [coverImage, setCoverImage] = useState(null);
+  const [albumArt, setAlbumArt] = useState(null);
+  const [posterImage, setPosterImage] = useState(null);
 
   // Gallery Images (Multiple)
   const [galleryImages, setGalleryImages] = useState([]);
 
   // Video
-  const [videoThumbnail, setVideoThumbnail] = useState(false);
-  const [videoFile, setVideoFile] = useState(false);
+  const [videoThumbnail, setVideoThumbnail] = useState(null);
+  const [videoFile, setVideoFile] = useState(null);
   const [youtubeLink, setYoutubeLink] = useState("");
 
   // Audio
-  const [demoTrack, setDemoTrack] = useState(false);
-  const [fullTrack, setFullTrack] = useState(false);
+  const [demoTrack, setDemoTrack] = useState(null);
+  const [fullTrack, setFullTrack] = useState(null);
 
   // Form Fields
   const [productTitle, setProductTitle] = useState("");
@@ -41,7 +43,10 @@ const AddInvestmentProduct = ({ token }) => {
   // ✅ Categories and Genres
   const categoryOptions = [
     "Music",
-    "Film",
+    "Films",
+    "upcoming projects",
+    "live production projects",
+    "commercial",
     "Documentary",
     "Web Series",
     "Other",
@@ -87,14 +92,33 @@ const AddInvestmentProduct = ({ token }) => {
   const onSubmitHandler = async (e) => {
     e.preventDefault();
 
+    // Check if user is authenticated
+    if (!token) {
+      toast.error("Please login to add products");
+      return;
+    }
+
+    // Enhanced validation
     if (
-      !productTitle ||
-      !description ||
-      !artistName ||
+      !productTitle.trim() ||
+      !description.trim() ||
+      !artistName.trim() ||
       !totalBudget ||
-      !minimumInvestment
+      !minimumInvestment ||
+      !category
     ) {
       toast.error("Please fill all required fields");
+      return;
+    }
+
+    // Validate budget values
+    if (parseFloat(totalBudget) <= 0 || parseFloat(minimumInvestment) <= 0) {
+      toast.error("Budget and investment amounts must be greater than 0");
+      return;
+    }
+
+    if (parseFloat(minimumInvestment) > parseFloat(totalBudget)) {
+      toast.error("Minimum investment cannot be greater than total budget");
       return;
     }
 
@@ -102,23 +126,23 @@ const AddInvestmentProduct = ({ token }) => {
       const formData = new FormData();
 
       // Basic fields
-      formData.append("productTitle", productTitle);
-      formData.append("description", description);
-      formData.append("artistName", artistName);
-      formData.append("producerName", producerName);
-      formData.append("labelName", labelName);
+      formData.append("productTitle", productTitle.trim());
+      formData.append("description", description.trim());
+      formData.append("artistName", artistName.trim());
+      formData.append("producerName", producerName.trim());
+      formData.append("labelName", labelName.trim());
       formData.append("category", category);
       formData.append("genre", genre);
       formData.append("totalBudget", totalBudget);
       formData.append("minimumInvestment", minimumInvestment);
-      formData.append("expectedDuration", expectedDuration);
+      formData.append("expectedDuration", expectedDuration.trim());
       formData.append("productStatus", productStatus);
       formData.append("targetAudience", JSON.stringify(targetAudience));
       formData.append("isFeatured", isFeatured);
       formData.append("isActive", isActive);
-      formData.append("youtubeLink", youtubeLink);
+      formData.append("youtubeLink", youtubeLink.trim());
 
-      // Single file uploads
+      // Single file uploads - only append if file exists
       if (coverImage) formData.append("coverImage", coverImage);
       if (albumArt) formData.append("albumArt", albumArt);
       if (posterImage) formData.append("posterImage", posterImage);
@@ -135,7 +159,12 @@ const AddInvestmentProduct = ({ token }) => {
       const response = await axios.post(
         `${backendUrl}/api/investment-product/add`,
         formData,
-        { headers: { token } }
+        {
+          headers: {
+            token,
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
 
       if (response.data.success) {
@@ -159,20 +188,24 @@ const AddInvestmentProduct = ({ token }) => {
         setYoutubeLink("");
 
         // Reset files
-        setCoverImage(false);
-        setAlbumArt(false);
-        setPosterImage(false);
-        setVideoThumbnail(false);
-        setVideoFile(false);
-        setDemoTrack(false);
-        setFullTrack(false);
+        setCoverImage(null);
+        setAlbumArt(null);
+        setPosterImage(null);
+        setVideoThumbnail(null);
+        setVideoFile(null);
+        setDemoTrack(null);
+        setFullTrack(null);
         setGalleryImages([]);
       } else {
         toast.error(response.data.message || "Failed to add product");
       }
     } catch (error) {
       console.error("Add product error:", error);
-      toast.error(error.response?.data?.message || "Failed to add product");
+      if (error.response?.status === 401) {
+        toast.error("Authentication failed. Please login again.");
+      } else {
+        toast.error(error.response?.data?.message || "Failed to add product");
+      }
     }
   };
 
@@ -296,6 +329,7 @@ const AddInvestmentProduct = ({ token }) => {
               onChange={(e) => setTotalBudget(e.target.value)}
               className="w-full px-3 py-2 border rounded"
               placeholder="1000000"
+              min="1"
               required
             />
           </div>
@@ -308,6 +342,7 @@ const AddInvestmentProduct = ({ token }) => {
               onChange={(e) => setMinimumInvestment(e.target.value)}
               className="w-full px-3 py-2 border rounded"
               placeholder="10000"
+              min="1"
               required
             />
           </div>

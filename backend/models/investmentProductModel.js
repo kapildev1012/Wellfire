@@ -22,18 +22,25 @@ const investmentProductSchema = new mongoose.Schema({
     totalBudget: { type: Number, required: true, min: 0 },
     currentFunding: { type: Number, default: 0, min: 0 },
     minimumInvestment: { type: Number, required: true, min: 100 },
+    totalInvestors: { type: Number, default: 0, min: 0 },
+    fundingDeadline: { type: Date },
+    fundingStatus: {
+        type: String,
+        default: "active",
+        enum: ["active", "paused", "completed", "cancelled"]
+    },
 
     // Media Assets
     coverImage: { type: String, default: "" },
     albumArt: { type: String, default: "" },
     posterImage: { type: String, default: "" },
     galleryImages: [{ type: String }], // Array of image URLs
-    
+
     // Video Assets
     videoThumbnail: { type: String, default: "" }, // Video thumbnail image
     videoFile: { type: String, default: "" }, // Uploaded video file URL
     youtubeLink: { type: String, default: "" }, // YouTube video link
-    
+
     // Audio Assets
     demoTrack: { type: String, default: "" },
     fullTrack: { type: String, default: "" },

@@ -2,14 +2,18 @@
 import express from "express";
 import {
     addInvestmentProduct,
-    listInvestmentProducts,
-    getInvestmentProduct,
-    updateInvestmentProduct,
-    removeInvestmentProduct,
     getFundingAnalytics,
+    getInvestmentProduct,
+    listInvestmentProducts,
+    removeInvestmentProduct,
+    updateInvestmentProduct,
+    updateFundingProgress,
+    updateProductStatus,
+    toggleFeatured,
+    toggleActive
 } from "../controllers/investmentProductController.js";
-import upload from "../middleware/multer.js";
 import adminAuth from "../middleware/adminAuth.js";
+import upload from "../middleware/multer.js";
 
 const investmentProductRouter = express.Router();
 
@@ -92,5 +96,11 @@ investmentProductRouter.post(
 investmentProductRouter.put("/:id", adminAuth, updateInvestmentProduct);
 investmentProductRouter.delete("/:id", adminAuth, removeInvestmentProduct);
 investmentProductRouter.get("/admin/analytics", adminAuth, getFundingAnalytics);
+
+// Funding Management Routes
+investmentProductRouter.put("/:id/funding", adminAuth, updateFundingProgress);
+investmentProductRouter.put("/:id/status", adminAuth, updateProductStatus);
+investmentProductRouter.put("/:id/featured", adminAuth, toggleFeatured);
+investmentProductRouter.put("/:id/active", adminAuth, toggleActive);
 
 export default investmentProductRouter;

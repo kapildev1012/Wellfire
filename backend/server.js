@@ -1,18 +1,16 @@
-// backend/server.js (Fixed)
-import express from "express";
 import cors from "cors";
 import "dotenv/config";
-import connectDB from "./config/mongodb.js";
+import express from "express";
+import multer from "multer"; // Added missing import
 import connectCloudinary from "./config/Cloudinary.js";
-import upload from "./middleware/multer.js"; // ✅ Added missing import
+import connectDB from "./config/mongodb.js";
 
 // Routes
-import userRouter from "./routes/userRoute.js";
-
 import cartRouter from "./routes/cartRoute.js";
-import orderRouter from "./routes/orderRoute.js";
 import investmentProductRouter from "./routes/investmentProductRoute.js";
 import investorRouter from "./routes/investorRoute.js";
+import orderRouter from "./routes/orderRoute.js";
+import userRouter from "./routes/userRoute.js";
 
 // App Config
 const app = express();
@@ -23,9 +21,12 @@ connectDB();
 connectCloudinary();
 
 // Middlewares
-app.use(express.json({ limit: '50mb' })); // ✅ Increased limit
-app.use(express.urlencoded({ extended: true, limit: '50mb' })); // ✅ Added urlencoded
-app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cors({
+    origin: ["http://localhost:5174", "http://localhost:3000", "https://your-frontend-domain.com"],
+    credentials: true
+}));
 
 // Create uploads directory if it doesn't exist
 import fs from 'fs';
@@ -36,19 +37,28 @@ if (!fs.existsSync(uploadDir)) {
     console.log("✅ Uploads directory created");
 }
 
+// Test route - Add this to verify server is working
+app.get("/", (req, res) => {
+    res.json({
+        success: true,
+        message: "✅ API Working - Investment Platform Ready",
+        timestamp: new Date().toISOString(),
+        routes: [
+            "/api/user",
+            "/api/cart",
+            "/api/order",
+            "/api/investment-product",
+            "/api/investor"
+        ]
+    });
+});
+
 // API Endpoints
 app.use("/api/user", userRouter);
-
 app.use("/api/cart", cartRouter);
 app.use("/api/order", orderRouter);
-
-// ✅ Investment APIs
 app.use("/api/investment-product", investmentProductRouter);
 app.use("/api/investor", investorRouter);
-
-app.get("/", (req, res) => {
-    res.send("✅ API Working - Investment Platform Ready");
-});
 
 // Enhanced error handling
 app.use((error, req, res, next) => {
@@ -77,12 +87,23 @@ app.use((error, req, res, next) => {
 
 // 404 handler
 app.use("*", (req, res) => {
+    console.log(`404 - Route not found: ${req.method} ${req.originalUrl}`);
     res.status(404).json({
         success: false,
-        message: "Route not found",
+        message: `Route not found: ${req.method} ${req.originalUrl}`,
+        availableRoutes: [
+            "GET /",
+            "POST /api/user/register",
+            "POST /api/user/login",
+            "POST /api/user/admin",
+            "POST /api/investment-product/add",
+            "GET /api/investment-product/list"
+        ]
     });
 });
 
-app.listen(port, () =>
-    console.log(`🚀 Investment Platform Server started on http://localhost:${port}`)
-);
+app.listen(port, () => {
+    console.log(`🚀 Investment Platform Server started on port ${port}`);
+    console.log(`📍 Server URL: http://localhost:${port}`);
+    console.log(`🌐 Test endpoint: http://localhost:${port}/api/investment-product/list`);
+});

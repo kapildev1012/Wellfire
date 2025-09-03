@@ -1,7 +1,7 @@
 // backend/controllers/investmentProductController.js (Debug Version)
+import { v2 as cloudinary } from "cloudinary";
 import InvestmentProduct from "../models/investmentProductModel.js";
 import Investor from "../models/investorModel.js";
-import { v2 as cloudinary } from "cloudinary";
 
 // Add new investment product with extensive debugging
 const addInvestmentProduct = async(req, res) => {
@@ -519,15 +519,30 @@ const getFundingAnalytics = async(req, res) => {
         const fundingProducts = await InvestmentProduct.countDocuments({
             productStatus: "funding"
         });
+        const completedProducts = await InvestmentProduct.countDocuments({
+            productStatus: "completed"
+        });
 
+        // Calculate total funding from InvestmentProduct currentFunding (more accurate)
+        const totalFundingData = await InvestmentProduct.aggregate([
+            { $group: { _id: null, total: { $sum: "$currentFunding" } } }
+        ]);
+
+        // Also get total from Investor collection for comparison
         const totalInvestments = await Investor.aggregate([
             { $match: { paymentStatus: "completed" } },
             { $group: { _id: null, total: { $sum: "$investmentAmount" } } }
         ]);
 
-        const totalInvestors = await Investor.countDocuments({
-            paymentStatus: "completed"
-        });
+        const totalInvestors = await InvestmentProduct.aggregate([
+            { $group: { _id: null, total: { $sum: "$totalInvestors" } } }
+        ]);
+
+        // Calculate average funding
+        const averageFunding = await InvestmentProduct.aggregate([
+            { $match: { currentFunding: { $gt: 0 } } },
+            { $group: { _id: null, average: { $avg: "$currentFunding" } } }
+        ]);
 
         const categoryStats = await InvestmentProduct.aggregate([
             { $match: { isActive: true } },
@@ -551,17 +566,19 @@ const getFundingAnalytics = async(req, res) => {
             { $limit: 10 }
         ]);
 
+        const totalFundingAmount = totalFundingData.length > 0 ? totalFundingData[0].total : 0;
+        const totalInvestorsCount = totalInvestors.length > 0 ? totalInvestors[0].total : 0;
+        const averageFundingAmount = averageFunding.length > 0 ? averageFunding[0].average : 0;
+
         res.json({
             success: true,
             analytics: {
-                overview: {
-                    totalProducts,
-                    activeProducts,
-                    fundingProducts,
-                    totalInvestment,
-
-                    totalInvestors,
-                },
+                totalProducts,
+                totalFunding: totalFundingAmount,
+                activeFunding: fundingProducts,
+                completedProjects: completedProducts,
+                averageFunding: averageFundingAmount,
+                totalInvestors: totalInvestorsCount,
                 categoryStats,
                 topFundedProjects: fundingProgress,
             },
@@ -572,11 +589,198 @@ const getFundingAnalytics = async(req, res) => {
     }
 };
 
+// Update funding progress
+const updateFundingProgress = async(req, res) => {
+    try {
+        const { id } = req.params;
+        const { currentFunding, totalInvestors, fundingDeadline, fundingStatus } = req.body;
+
+        console.log("🔧 Updating funding progress for product:", id);
+        console.log("📊 Funding data:", req.body);
+
+        // Validate input
+        if (currentFunding < 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Current funding cannot be negative"
+            });
+        }
+
+        if (totalInvestors < 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Total investors cannot be negative"
+            });
+        }
+
+        // Get the product to validate against total budget
+        const product = await InvestmentProduct.findById(id);
+        if (!product) {
+            return res.status(404).json({
+                success: false,
+                message: "Investment product not found"
+            });
+        }
+
+        if (currentFunding > product.totalBudget) {
+            return res.status(400).json({
+                success: false,
+                message: "Current funding cannot exceed total budget"
+            });
+        }
+
+        // Update the product
+        const updatedProduct = await InvestmentProduct.findByIdAndUpdate(
+            id, {
+                currentFunding,
+                totalInvestors,
+                fundingDeadline,
+                fundingStatus,
+                updatedAt: Date.now()
+            }, { new: true }
+        );
+
+        console.log("✅ Funding progress updated successfully");
+
+        res.json({
+            success: true,
+            message: "Funding progress updated successfully",
+            product: updatedProduct
+        });
+    } catch (error) {
+        console.error("Update funding progress error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Failed to update funding progress"
+        });
+    }
+};
+
+// Update product status
+const updateProductStatus = async(req, res) => {
+    try {
+        const { id } = req.params;
+        const { productStatus } = req.body;
+
+        console.log("🔧 Updating product status for product:", id);
+        console.log("📊 New status:", productStatus);
+
+        const validStatuses = ["funding", "in-production", "completed", "cancelled"];
+        if (!validStatuses.includes(productStatus)) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid product status"
+            });
+        }
+
+        const updatedProduct = await InvestmentProduct.findByIdAndUpdate(
+            id, { productStatus, updatedAt: Date.now() }, { new: true }
+        );
+
+        if (!updatedProduct) {
+            return res.status(404).json({
+                success: false,
+                message: "Investment product not found"
+            });
+        }
+
+        console.log("✅ Product status updated successfully");
+
+        res.json({
+            success: true,
+            message: "Product status updated successfully",
+            product: updatedProduct
+        });
+    } catch (error) {
+        console.error("Update product status error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Failed to update product status"
+        });
+    }
+};
+
+// Toggle featured status
+const toggleFeatured = async(req, res) => {
+    try {
+        const { id } = req.params;
+        const { isFeatured } = req.body;
+
+        console.log("🔧 Toggling featured status for product:", id);
+        console.log("📊 New featured status:", isFeatured);
+
+        const updatedProduct = await InvestmentProduct.findByIdAndUpdate(
+            id, { isFeatured, updatedAt: Date.now() }, { new: true }
+        );
+
+        if (!updatedProduct) {
+            return res.status(404).json({
+                success: false,
+                message: "Investment product not found"
+            });
+        }
+
+        console.log("✅ Featured status updated successfully");
+
+        res.json({
+            success: true,
+            message: "Featured status updated successfully",
+            product: updatedProduct
+        });
+    } catch (error) {
+        console.error("Toggle featured error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Failed to update featured status"
+        });
+    }
+};
+
+// Toggle active status
+const toggleActive = async(req, res) => {
+    try {
+        const { id } = req.params;
+        const { isActive } = req.body;
+
+        console.log("🔧 Toggling active status for product:", id);
+        console.log("📊 New active status:", isActive);
+
+        const updatedProduct = await InvestmentProduct.findByIdAndUpdate(
+            id, { isActive, updatedAt: Date.now() }, { new: true }
+        );
+
+        if (!updatedProduct) {
+            return res.status(404).json({
+                success: false,
+                message: "Investment product not found"
+            });
+        }
+
+        console.log("✅ Active status updated successfully");
+
+        res.json({
+            success: true,
+            message: "Active status updated successfully",
+            product: updatedProduct
+        });
+    } catch (error) {
+        console.error("Toggle active error:", error);
+        res.status(500).json({
+            success: false,
+            message: error.message || "Failed to update active status"
+        });
+    }
+};
+
 export {
     addInvestmentProduct,
-    listInvestmentProducts,
-    getInvestmentProduct,
-    updateInvestmentProduct,
-    removeInvestmentProduct,
     getFundingAnalytics,
+    getInvestmentProduct,
+    listInvestmentProducts,
+    removeInvestmentProduct,
+    toggleActive,
+    toggleFeatured,
+    updateFundingProgress,
+    updateInvestmentProduct,
+    updateProductStatus
 };
