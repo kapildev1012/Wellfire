@@ -4,276 +4,596 @@ import axios from "axios";
 import { backendUrl } from "../App";
 import { toast } from "react-toastify";
 
-const Add = ({ token }) => {
-  const [image1, setImage1] = useState(false);
-  const [image2, setImage2] = useState(false);
-  const [image3, setImage3] = useState(false);
-  const [image4, setImage4] = useState(false);
+const AddInvestmentProduct = ({ token }) => {
+  // Basic Images
+  const [coverImage, setCoverImage] = useState(false);
+  const [albumArt, setAlbumArt] = useState(false);
+  const [posterImage, setPosterImage] = useState(false);
 
+  // Gallery Images (Multiple)
+  const [galleryImages, setGalleryImages] = useState([]);
+
+  // Video
   const [videoThumbnail, setVideoThumbnail] = useState(false);
+  const [videoFile, setVideoFile] = useState(false);
   const [youtubeLink, setYoutubeLink] = useState("");
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [category, setCategory] = useState("");
-  const [subCategory, setSubCategory] = useState("");
-  const [slots, setSlots] = useState(0);
-  const [sizes, setSizes] = useState([]);
+  // Audio
+  const [demoTrack, setDemoTrack] = useState(false);
+  const [fullTrack, setFullTrack] = useState(false);
 
-  // ✅ Categories
-  const categoryMap = {
-    "Live Production Project": ["Event", "Concert", "Festival"],
-    "Abroad Project": ["Film", "Documentary", "Music"],
-    "Latest Project": ["Film", "Music", "Ad"],
-    "Upcoming Project": ["Film", "Music", "Commercial"],
+  // Form Fields
+  const [productTitle, setProductTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [artistName, setArtistName] = useState("");
+  const [producerName, setProducerName] = useState("");
+  const [labelName, setLabelName] = useState("");
+  const [category, setCategory] = useState("");
+  const [genre, setGenre] = useState("");
+  const [totalBudget, setTotalBudget] = useState("");
+  const [minimumInvestment, setMinimumInvestment] = useState("");
+  const [expectedDuration, setExpectedDuration] = useState("");
+  const [productStatus, setProductStatus] = useState("funding");
+  const [targetAudience, setTargetAudience] = useState([]);
+  const [isFeatured, setIsFeatured] = useState(false);
+  const [isActive, setIsActive] = useState(true);
+
+  // ✅ Categories and Genres
+  const categoryOptions = [
+    "Music",
+    "Film",
+    "Documentary",
+    "Web Series",
+    "Other",
+  ];
+  const genreOptions = [
+    "Pop",
+    "Rock",
+    "Classical",
+    "Jazz",
+    "Hip-Hop",
+    "Electronic",
+    "Folk",
+    "Country",
+    "R&B",
+    "Indie",
+    "Other",
+  ];
+  const statusOptions = ["funding", "in-production", "completed", "cancelled"];
+  const audienceOptions = [
+    "Youth",
+    "Adults",
+    "Children",
+    "Seniors",
+    "Global",
+    "Regional",
+  ];
+
+  // Handle Gallery Images
+  const handleGalleryImageChange = (e) => {
+    const files = Array.from(e.target.files);
+    setGalleryImages(files);
   };
 
-  // ✅ Handle Slots Generation
-  const generateSlots = (totalPrice, slotCount) => {
-    if (!totalPrice || !slotCount) return [];
-    const perSlot = totalPrice / slotCount;
-    return Array.from({ length: slotCount }, (_, i) => ({
-      slot: i + 1,
-      price: perSlot,
-    }));
+  // Handle Target Audience
+  const handleAudienceChange = (audience) => {
+    if (targetAudience.includes(audience)) {
+      setTargetAudience(targetAudience.filter((item) => item !== audience));
+    } else {
+      setTargetAudience([...targetAudience, audience]);
+    }
   };
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+
+    if (
+      !productTitle ||
+      !description ||
+      !artistName ||
+      !totalBudget ||
+      !minimumInvestment
+    ) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
     try {
       const formData = new FormData();
-      formData.append("name", name);
+
+      // Basic fields
+      formData.append("productTitle", productTitle);
       formData.append("description", description);
-      formData.append("price", price);
+      formData.append("artistName", artistName);
+      formData.append("producerName", producerName);
+      formData.append("labelName", labelName);
       formData.append("category", category);
-      formData.append("subCategory", subCategory);
-      formData.append("sizes", JSON.stringify(sizes));
+      formData.append("genre", genre);
+      formData.append("totalBudget", totalBudget);
+      formData.append("minimumInvestment", minimumInvestment);
+      formData.append("expectedDuration", expectedDuration);
+      formData.append("productStatus", productStatus);
+      formData.append("targetAudience", JSON.stringify(targetAudience));
+      formData.append("isFeatured", isFeatured);
+      formData.append("isActive", isActive);
       formData.append("youtubeLink", youtubeLink);
 
-      if (image1) formData.append("image1", image1);
-      if (image2) formData.append("image2", image2);
-      if (image3) formData.append("image3", image3);
-      if (image4) formData.append("image4", image4);
+      // Single file uploads
+      if (coverImage) formData.append("coverImage", coverImage);
+      if (albumArt) formData.append("albumArt", albumArt);
+      if (posterImage) formData.append("posterImage", posterImage);
       if (videoThumbnail) formData.append("videoThumbnail", videoThumbnail);
+      if (videoFile) formData.append("videoFile", videoFile);
+      if (demoTrack) formData.append("demoTrack", demoTrack);
+      if (fullTrack) formData.append("fullTrack", fullTrack);
+
+      // Multiple gallery images
+      galleryImages.forEach((image) => {
+        formData.append("galleryImages", image);
+      });
 
       const response = await axios.post(
-        `${backendUrl}/api/product/add`,
+        `${backendUrl}/api/investment-product/add`,
         formData,
         { headers: { token } }
       );
 
       if (response.data.success) {
-        toast.success(response.data.message);
-        setName("");
+        toast.success("Investment product added successfully!");
+
+        // Reset form
+        setProductTitle("");
         setDescription("");
-        setPrice("");
+        setArtistName("");
+        setProducerName("");
+        setLabelName("");
         setCategory("");
-        setSubCategory("");
-        setSizes([]);
-        setSlots(0);
+        setGenre("");
+        setTotalBudget("");
+        setMinimumInvestment("");
+        setExpectedDuration("");
+        setProductStatus("funding");
+        setTargetAudience([]);
+        setIsFeatured(false);
+        setIsActive(true);
         setYoutubeLink("");
-        setImage1(false);
-        setImage2(false);
-        setImage3(false);
-        setImage4(false);
+
+        // Reset files
+        setCoverImage(false);
+        setAlbumArt(false);
+        setPosterImage(false);
         setVideoThumbnail(false);
+        setVideoFile(false);
+        setDemoTrack(false);
+        setFullTrack(false);
+        setGalleryImages([]);
       } else {
-        toast.error(response.data.message);
+        toast.error(response.data.message || "Failed to add product");
       }
     } catch (error) {
-      toast.error(error.message);
+      console.error("Add product error:", error);
+      toast.error(error.response?.data?.message || "Failed to add product");
     }
   };
 
   return (
     <form
       onSubmit={onSubmitHandler}
-      className="flex flex-col w-full items-start gap-3"
+      className="flex flex-col w-full items-start gap-4 p-6"
     >
-      {/* Image Upload */}
-      <div>
-        <p className="mb-2">Upload Images</p>
-        <div className="flex gap-2">
-          {[setImage1, setImage2, setImage3, setImage4].map(
-            (setImage, index) => (
-              <label key={index} htmlFor={`image${index + 1}`}>
+      <h2 className="text-2xl font-bold mb-4">Add Investment Product</h2>
+
+      {/* Basic Information */}
+      <div className="w-full border p-4 rounded">
+        <h3 className="text-lg font-semibold mb-3">Basic Information</h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <p className="mb-2">Product Title*</p>
+            <input
+              type="text"
+              value={productTitle}
+              onChange={(e) => setProductTitle(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="Enter product title"
+              required
+            />
+          </div>
+
+          <div>
+            <p className="mb-2">Artist Name*</p>
+            <input
+              type="text"
+              value={artistName}
+              onChange={(e) => setArtistName(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="Enter artist name"
+              required
+            />
+          </div>
+
+          <div>
+            <p className="mb-2">Producer Name</p>
+            <input
+              type="text"
+              value={producerName}
+              onChange={(e) => setProducerName(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="Enter producer name"
+            />
+          </div>
+
+          <div>
+            <p className="mb-2">Label Name</p>
+            <input
+              type="text"
+              value={labelName}
+              onChange={(e) => setLabelName(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="Enter label name"
+            />
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <p className="mb-2">Description*</p>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full px-3 py-2 border rounded"
+            placeholder="Enter product description"
+            rows="4"
+            required
+          />
+        </div>
+      </div>
+
+      {/* Category & Financial Details */}
+      <div className="w-full border p-4 rounded">
+        <h3 className="text-lg font-semibold mb-3">
+          Category & Financial Details
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <p className="mb-2">Category*</p>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              required
+            >
+              <option value="">Select Category</option>
+              {categoryOptions.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <p className="mb-2">Genre</p>
+            <select
+              value={genre}
+              onChange={(e) => setGenre(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+            >
+              <option value="">Select Genre</option>
+              {genreOptions.map((gen) => (
+                <option key={gen} value={gen}>
+                  {gen}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <p className="mb-2">Total Budget (₹)*</p>
+            <input
+              type="number"
+              value={totalBudget}
+              onChange={(e) => setTotalBudget(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="1000000"
+              required
+            />
+          </div>
+
+          <div>
+            <p className="mb-2">Minimum Investment (₹)*</p>
+            <input
+              type="number"
+              value={minimumInvestment}
+              onChange={(e) => setMinimumInvestment(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="10000"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div>
+            <p className="mb-2">Expected Duration</p>
+            <input
+              type="text"
+              value={expectedDuration}
+              onChange={(e) => setExpectedDuration(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="3 months"
+            />
+          </div>
+
+          <div>
+            <p className="mb-2">Product Status</p>
+            <select
+              value={productStatus}
+              onChange={(e) => setProductStatus(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+            >
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Image Uploads */}
+      <div className="w-full border p-4 rounded">
+        <h3 className="text-lg font-semibold mb-3">Image Uploads</h3>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Cover Image */}
+          <div>
+            <p className="mb-2">Cover Image</p>
+            <label htmlFor="coverImage">
+              <img
+                className="w-20 h-20 object-cover border rounded cursor-pointer"
+                src={
+                  !coverImage
+                    ? assets.upload_area
+                    : URL.createObjectURL(coverImage)
+                }
+                alt="Cover"
+              />
+              <input
+                onChange={(e) => setCoverImage(e.target.files[0])}
+                type="file"
+                id="coverImage"
+                accept="image/*"
+                hidden
+              />
+            </label>
+          </div>
+
+          {/* Album Art */}
+          <div>
+            <p className="mb-2">Album Art</p>
+            <label htmlFor="albumArt">
+              <img
+                className="w-20 h-20 object-cover border rounded cursor-pointer"
+                src={
+                  !albumArt ? assets.upload_area : URL.createObjectURL(albumArt)
+                }
+                alt="Album Art"
+              />
+              <input
+                onChange={(e) => setAlbumArt(e.target.files[0])}
+                type="file"
+                id="albumArt"
+                accept="image/*"
+                hidden
+              />
+            </label>
+          </div>
+
+          {/* Poster Image */}
+          <div>
+            <p className="mb-2">Poster Image</p>
+            <label htmlFor="posterImage">
+              <img
+                className="w-20 h-20 object-cover border rounded cursor-pointer"
+                src={
+                  !posterImage
+                    ? assets.upload_area
+                    : URL.createObjectURL(posterImage)
+                }
+                alt="Poster"
+              />
+              <input
+                onChange={(e) => setPosterImage(e.target.files[0])}
+                type="file"
+                id="posterImage"
+                accept="image/*"
+                hidden
+              />
+            </label>
+          </div>
+
+          {/* Video Thumbnail */}
+          <div>
+            <p className="mb-2">Video Thumbnail</p>
+            <label htmlFor="videoThumbnail">
+              <img
+                className="w-20 h-20 object-cover border rounded cursor-pointer"
+                src={
+                  !videoThumbnail
+                    ? assets.upload_area
+                    : URL.createObjectURL(videoThumbnail)
+                }
+                alt="Video Thumbnail"
+              />
+              <input
+                onChange={(e) => setVideoThumbnail(e.target.files[0])}
+                type="file"
+                id="videoThumbnail"
+                accept="image/*"
+                hidden
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Gallery Images */}
+        <div className="mt-4">
+          <p className="mb-2">Gallery Images (Multiple)</p>
+          <input
+            type="file"
+            onChange={handleGalleryImageChange}
+            className="w-full px-3 py-2 border rounded"
+            multiple
+            accept="image/*"
+          />
+          {galleryImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {Array.from(galleryImages).map((image, index) => (
                 <img
-                  className="w-20"
-                  src={
-                    !eval(`image${index + 1}`)
-                      ? assets.upload_area
-                      : URL.createObjectURL(eval(`image${index + 1}`))
-                  }
-                  alt=""
+                  key={index}
+                  src={URL.createObjectURL(image)}
+                  alt={`Gallery ${index + 1}`}
+                  className="w-16 h-16 object-cover border rounded"
                 />
-                <input
-                  onChange={(e) => setImage(e.target.files[0])}
-                  type="file"
-                  id={`image${index + 1}`}
-                  hidden
-                />
-              </label>
-            )
+              ))}
+            </div>
           )}
         </div>
       </div>
 
-      {/* Video Upload */}
-      <div>
-        <p className="mb-2">Upload Video Thumbnail</p>
-        <label htmlFor="videoThumbnail">
-          <img
-            className="w-20"
-            src={
-              !videoThumbnail
-                ? assets.upload_area
-                : URL.createObjectURL(videoThumbnail)
-            }
-            alt=""
-          />
-          <input
-            onChange={(e) => setVideoThumbnail(e.target.files[0])}
-            type="file"
-            id="videoThumbnail"
-            hidden
-          />
-        </label>
+      {/* Video & YouTube */}
+      <div className="w-full border p-4 rounded">
+        <h3 className="text-lg font-semibold mb-3">Video Content</h3>
 
-        <p className="mt-2 mb-1">YouTube Link</p>
-        <input
-          type="text"
-          value={youtubeLink}
-          onChange={(e) => setYoutubeLink(e.target.value)}
-          className="w-full max-w-[500px] px-3 py-2"
-          placeholder="Paste YouTube link"
-        />
-      </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Video File Upload */}
+          <div>
+            <p className="mb-2">Upload Video File</p>
+            <input
+              type="file"
+              onChange={(e) => setVideoFile(e.target.files[0])}
+              className="w-full px-3 py-2 border rounded"
+              accept="video/*"
+            />
+            {videoFile && (
+              <p className="text-sm text-green-600 mt-1">
+                Video selected: {videoFile.name}
+              </p>
+            )}
+          </div>
 
-      {/* Name */}
-      <div className="w-full">
-        <p className="mb-2">Project Name</p>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full max-w-[500px] px-3 py-2"
-          placeholder="Type here"
-          required
-        />
-      </div>
-
-      {/* Description */}
-      <div className="w-full">
-        <p className="mb-2">Project Description</p>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="w-full max-w-[500px] px-3 py-2"
-          placeholder="Write content here"
-          required
-        />
-      </div>
-
-      {/* Category, Subcategory, Price */}
-      <div className="flex flex-col sm:flex-row gap-2 w-full sm:gap-8">
-        <div>
-          <p className="mb-2">Category</p>
-          <select
-            value={category}
-            onChange={(e) => {
-              setCategory(e.target.value);
-              setSubCategory("");
-              setSizes([]);
-            }}
-            className="w-full px-3 py-2"
-            required
-          >
-            <option value="">Select Category</option>
-            {Object.keys(categoryMap).map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <p className="mb-2">Sub Category</p>
-          <select
-            value={subCategory}
-            onChange={(e) => {
-              setSubCategory(e.target.value);
-              setSizes([]);
-            }}
-            className="w-full px-3 py-2"
-            disabled={!category}
-            required
-          >
-            <option value="">Select Sub Category</option>
-            {category &&
-              categoryMap[category].map((sub) => (
-                <option key={sub} value={sub}>
-                  {sub}
-                </option>
-              ))}
-          </select>
-        </div>
-
-        <div>
-          <p className="mb-2">Total Project Cost</p>
-          <input
-            type="number"
-            value={price}
-            onChange={(e) => {
-              setPrice(e.target.value);
-              setSizes(generateSlots(e.target.value, slots));
-            }}
-            className="w-full px-3 py-2 sm:w-[150px]"
-            placeholder="Enter Price"
-            required
-          />
-        </div>
-
-        <div>
-          <p className="mb-2">Number of Slots</p>
-          <input
-            type="number"
-            value={slots}
-            onChange={(e) => {
-              setSlots(e.target.value);
-              setSizes(generateSlots(price, e.target.value));
-            }}
-            className="w-full px-3 py-2 sm:w-[150px]"
-            placeholder="Enter Slots"
-            required
-          />
-        </div>
-      </div>
-
-      {/* Slots Preview */}
-      {sizes.length > 0 && (
-        <div className="mt-3">
-          <p className="mb-2">Generated Slots</p>
-          <div className="flex flex-wrap gap-2">
-            {sizes.map((slot) => (
-              <div key={slot.slot} className="px-3 py-1 bg-slate-200 rounded">
-                Slot {slot.slot}: ₹{slot.price}
-              </div>
-            ))}
+          {/* YouTube Link */}
+          <div>
+            <p className="mb-2">YouTube Link</p>
+            <input
+              type="url"
+              value={youtubeLink}
+              onChange={(e) => setYoutubeLink(e.target.value)}
+              className="w-full px-3 py-2 border rounded"
+              placeholder="https://youtube.com/watch?v=..."
+            />
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Submit */}
+      {/* Audio Uploads */}
+      <div className="w-full border p-4 rounded">
+        <h3 className="text-lg font-semibold mb-3">Audio Content</h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Demo Track */}
+          <div>
+            <p className="mb-2">Demo Track</p>
+            <input
+              type="file"
+              onChange={(e) => setDemoTrack(e.target.files[0])}
+              className="w-full px-3 py-2 border rounded"
+              accept="audio/*"
+            />
+            {demoTrack && (
+              <p className="text-sm text-green-600 mt-1">
+                Demo track: {demoTrack.name}
+              </p>
+            )}
+          </div>
+
+          {/* Full Track */}
+          <div>
+            <p className="mb-2">Full Track</p>
+            <input
+              type="file"
+              onChange={(e) => setFullTrack(e.target.files[0])}
+              className="w-full px-3 py-2 border rounded"
+              accept="audio/*"
+            />
+            {fullTrack && (
+              <p className="text-sm text-green-600 mt-1">
+                Full track: {fullTrack.name}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Target Audience */}
+      <div className="w-full border p-4 rounded">
+        <h3 className="text-lg font-semibold mb-3">Target Audience</h3>
+        <div className="flex flex-wrap gap-2">
+          {audienceOptions.map((audience) => (
+            <label
+              key={audience}
+              className="flex items-center gap-2 cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                checked={targetAudience.includes(audience)}
+                onChange={() => handleAudienceChange(audience)}
+                className="rounded"
+              />
+              <span className="text-sm">{audience}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Settings */}
+      <div className="w-full border p-4 rounded">
+        <h3 className="text-lg font-semibold mb-3">Settings</h3>
+
+        <div className="flex gap-6">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isFeatured}
+              onChange={(e) => setIsFeatured(e.target.checked)}
+              className="rounded"
+            />
+            <span>Featured Product</span>
+          </label>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(e) => setIsActive(e.target.checked)}
+              className="rounded"
+            />
+            <span>Active</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Submit Button */}
       <button
         type="submit"
-        className="w-28 py-3 mt-4 bg-black text-white rounded"
+        className="bg-blue-600 text-white px-8 py-3 rounded hover:bg-blue-700 font-semibold"
       >
-        ADD
+        Add Investment Product
       </button>
     </form>
   );
 };
 
-export default Add;
+export default AddInvestmentProduct;

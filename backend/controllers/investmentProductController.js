@@ -24,9 +24,10 @@ const addInvestmentProduct = async(req, res) => {
             targetAudience,
             isFeatured,
             isActive,
+            youtubeLink,
         } = req.body;
 
-        // ✅ Provide defaults if missing (to avoid validation error)
+        // ✅ Provide defaults if missing
         if (!productTitle) productTitle = "Untitled Project";
         if (!description) description = "No description provided";
         if (!artistName) artistName = "Unknown Artist";
@@ -42,9 +43,9 @@ const addInvestmentProduct = async(req, res) => {
             parsedAudience = [];
         }
 
-        // ✅ Handle file uploads (Multer OR express-fileupload)
+        // ✅ Handle file uploads
         const uploadResults = {};
-        const imageFields = ["coverImage", "albumArt", "posterImage"];
+        const imageFields = ["coverImage", "albumArt", "posterImage", "videoThumbnail"];
 
         for (const field of imageFields) {
             if (req.files && req.files[field]) {
@@ -60,7 +61,7 @@ const addInvestmentProduct = async(req, res) => {
             }
         }
 
-        // Handle gallery images
+        // Handle gallery images (multiple)
         if (req.files && req.files["galleryImages"]) {
             const galleryFiles = Array.isArray(req.files["galleryImages"]) ?
                 req.files["galleryImages"] : [req.files["galleryImages"]];
@@ -77,6 +78,17 @@ const addInvestmentProduct = async(req, res) => {
             uploadResults.galleryImages = galleryUrls;
         }
 
+        // Handle video file upload
+        if (req.files && req.files["videoFile"]) {
+            const filePath = req.files["videoFile"][0]?.path || req.files["videoFile"].tempFilePath;
+            const result = await cloudinary.uploader.upload(filePath, {
+                resource_type: "video",
+                folder: "investment-products/videos",
+            });
+            uploadResults.videoFile = result.secure_url;
+        }
+
+        // Handle audio files
         const audioFields = ["demoTrack", "fullTrack"];
         for (const field of audioFields) {
             if (req.files && req.files[field]) {
@@ -105,6 +117,7 @@ const addInvestmentProduct = async(req, res) => {
             targetAudience: parsedAudience,
             isFeatured: isFeatured === "true" || isFeatured === true,
             isActive: isActive === "true" || isActive === true,
+            youtubeLink: youtubeLink || "",
             ...uploadResults,
         };
 
@@ -175,6 +188,7 @@ const listInvestmentProducts = async(req, res) => {
                     fundingPercentage: fundingPercentage.toFixed(1),
                     totalInvestors,
                     remainingAmount: product.remainingAmount,
+                    raisedAmount: product.currentFunding,
                 };
             })
         );
@@ -228,6 +242,7 @@ const getInvestmentProduct = async(req, res) => {
             totalInvestors: investors.length,
             fundingPercentage: product.fundingPercentage.toFixed(1),
             remainingAmount: product.remainingAmount,
+            raisedAmount: product.currentFunding,
             averageInvestment: investors.length > 0 ?
                 (product.currentFunding / investors.length).toFixed(2) : 0,
         };

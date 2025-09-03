@@ -63,7 +63,8 @@ const addProduct = async(req, res) => {
         for (const field of audioFields) {
             if (req.files && req.files[field]) {
                 const filePath =
-                    req.files[field][0] ? .path || req.files[field].tempFilePath;
+
+                    req.files[field][0].path || req.files[field].tempFilePath;
                 const result = await cloudinary.uploader.upload(filePath, {
                     resource_type: "video", // Cloudinary uses video pipeline for audio
                     folder: "music-products/audio",

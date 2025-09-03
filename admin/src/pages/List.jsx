@@ -1,460 +1,463 @@
-import axios from "axios";
 import React, { useEffect, useState } from "react";
+import axios from "axios";
 import { backendUrl } from "../App";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
 
-const MusicProjectList = ({ token }) => {
-  const [list, setList] = useState([]);
-  const [search, setSearch] = useState("");
-  const [sortOrder, setSortOrder] = useState("desc");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [loading, setLoading] = useState(false);
+const ListInvestmentProducts = ({ token }) => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [filters, setFilters] = useState({
+    category: "",
+    status: "",
+    featured: "",
+    active: "true",
+  });
 
-  const navigate = useNavigate();
-
-  const fetchList = async () => {
-    setLoading(true);
+  // Fetch products
+  const fetchProducts = async (page = 1) => {
     try {
-      const response = await axios.get(backendUrl + "/api/product/list");
+      setLoading(true);
+      const params = new URLSearchParams({
+        page,
+        limit: 10,
+        ...filters,
+      });
+
+      const response = await axios.get(
+        `${backendUrl}/api/investment-product/list?${params}`,
+        { headers: { token } }
+      );
+
       if (response.data.success) {
-        setList(response.data.products || []);
-      } else {
-        toast.error(response.data.message);
+        setProducts(response.data.products);
+        setCurrentPage(response.data.pagination.currentPage);
+        setTotalPages(response.data.pagination.totalPages);
       }
     } catch (error) {
-      console.error("Error fetching projects:", error);
-      toast.error("Failed to fetch projects");
+      console.error("Fetch products error:", error);
+      toast.error("Failed to fetch products");
     } finally {
       setLoading(false);
     }
   };
 
-  const removeProduct = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this project?"))
-      return;
+  // Delete product
+  const handleDelete = async (productId) => {
+    if (!confirm("Are you sure you want to delete this product?")) return;
 
     try {
       const response = await axios.delete(
-        `${backendUrl}/api/product/remove/${id}`,
+        `${backendUrl}/api/investment-product/${productId}`,
         { headers: { token } }
       );
+
       if (response.data.success) {
-        toast.success(response.data.message);
-        await fetchList();
+        toast.success("Product deleted successfully");
+        fetchProducts(currentPage);
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      console.error("Error removing project:", error);
-      toast.error("Failed to remove project");
+      console.error("Delete error:", error);
+      toast.error(error.response?.data?.message || "Failed to delete product");
     }
   };
 
-  const toggleActiveStatus = async (id, currentStatus) => {
-    try {
-      const response = await axios.put(
-        `${backendUrl}/api/product/update/${id}`,
-        { isActive: !currentStatus },
-        { headers: { token } }
-      );
-      if (response.data.success) {
-        toast.success("Project status updated");
-        await fetchList();
-      } else {
-        toast.error(response.data.message);
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast.error("Failed to update status");
-    }
-  };
-
-  const toggleFeaturedStatus = async (id, currentStatus) => {
-    try {
-      const response = await axios.put(
-        `${backendUrl}/api/product/update/${id}`,
-        { isFeatured: !currentStatus },
-        { headers: { token } }
-      );
-      if (response.data.success) {
-        toast.success("Featured status updated");
-        await fetchList();
-      } else {
-        toast.error(response.data.message);
-      }
-    } catch (error) {
-      console.error("Error updating featured status:", error);
-      toast.error("Failed to update featured status");
-    }
-  };
-
-  useEffect(() => {
-    fetchList();
-  }, []);
-
-  // Filter and sort logic
-  const filteredList = list
-    .filter((item) => {
-      const matchesSearch =
-        item.productTitle?.toLowerCase().includes(search.toLowerCase()) ||
-        item.artistName?.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus =
-        statusFilter === "all" || item.productStatus === statusFilter;
-      const matchesCategory =
-        categoryFilter === "all" || item.category === categoryFilter;
-      return matchesSearch && matchesStatus && matchesCategory;
-    })
-    .sort((a, b) => {
-      if (sortOrder === "asc") {
-        return (a.totalBudget || 0) - (b.totalBudget || 0);
-      } else {
-        return (b.totalBudget || 0) - (a.totalBudget || 0);
-      }
-    });
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "funding":
-        return "bg-blue-100 text-blue-800";
-      case "pre-production":
-        return "bg-yellow-100 text-yellow-800";
-      case "recording":
-        return "bg-red-100 text-red-800";
-      case "post-production":
-        return "bg-purple-100 text-purple-800";
-      case "marketing":
-        return "bg-green-100 text-green-800";
-      case "completed":
-        return "bg-gray-100 text-gray-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getStatusEmoji = (status) => {
-    switch (status) {
-      case "funding":
-        return "💰";
-      case "pre-production":
-        return "📅";
-      case "recording":
-        return "🎙️";
-      case "post-production":
-        return "⚙️";
-      case "marketing":
-        return "📢";
-      case "completed":
-        return "✅";
-      default:
-        return "❓";
-    }
-  };
-
-  const calculateFundingPercentage = (current, total) => {
-    if (!total || total === 0) return 0;
-    return Math.min((current / total) * 100, 100);
-  };
-
+  // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount || 0);
+    }).format(amount);
   };
 
-  const uniqueStatuses = [
-    ...new Set(list.map((item) => item.productStatus)),
-  ].filter(Boolean);
-  const uniqueCategories = [
-    ...new Set(list.map((item) => item.category)),
-  ].filter(Boolean);
+  // Get YouTube video ID
+  const getYouTubeVideoId = (url) => {
+    const match = url.match(
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/
+    );
+    return match ? match[1] : null;
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, [filters]);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
+      <div className="flex justify-center items-center h-64">Loading...</div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Music Projects
-          </h1>
-          <p className="text-lg text-gray-600">
-            Manage your music investment projects
-          </p>
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Investment Products</h2>
+        <button
+          onClick={() => (window.location.href = "/add-investment-product")}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Add New Product
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white p-4 rounded border mb-6">
+        <h3 className="font-semibold mb-3">Filters</h3>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <select
+            value={filters.category}
+            onChange={(e) =>
+              setFilters({ ...filters, category: e.target.value })
+            }
+            className="px-3 py-2 border rounded"
+          >
+            <option value="">All Categories</option>
+            <option value="Music">Music</option>
+            <option value="Film">Film</option>
+            <option value="Documentary">Documentary</option>
+            <option value="Web Series">Web Series</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            className="px-3 py-2 border rounded"
+          >
+            <option value="">All Status</option>
+            <option value="funding">Funding</option>
+            <option value="in-production">In Production</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+
+          <select
+            value={filters.featured}
+            onChange={(e) =>
+              setFilters({ ...filters, featured: e.target.value })
+            }
+            className="px-3 py-2 border rounded"
+          >
+            <option value="">All Products</option>
+            <option value="true">Featured Only</option>
+            <option value="false">Not Featured</option>
+          </select>
+
+          <select
+            value={filters.active}
+            onChange={(e) => setFilters({ ...filters, active: e.target.value })}
+            className="px-3 py-2 border rounded"
+          >
+            <option value="">All</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
         </div>
+      </div>
 
-        {/* Controls */}
-        <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {/* Search */}
-            <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Search
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search by title or artist..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                  🔍
-                </span>
-              </div>
-            </div>
+      {/* Products List */}
+      <div className="space-y-6">
+        {products.map((product) => (
+          <div
+            key={product._id}
+            className="bg-white border rounded-lg p-6 shadow-sm"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Product Images */}
+              <div className="space-y-3">
+                {product.coverImage && (
+                  <div>
+                    <p className="text-sm font-medium mb-1">Cover Image</p>
+                    <img
+                      src={product.coverImage}
+                      alt="Cover"
+                      className="w-full h-32 object-cover rounded border"
+                    />
+                  </div>
+                )}
 
-            {/* Status Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Status</option>
-                {uniqueStatuses.map((status) => (
-                  <option key={status} value={status}>
-                    {getStatusEmoji(status)}{" "}
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </div>
+                {product.videoThumbnail && (
+                  <div>
+                    <p className="text-sm font-medium mb-1">Video Thumbnail</p>
+                    <img
+                      src={product.videoThumbnail}
+                      alt="Video Thumbnail"
+                      className="w-full h-32 object-cover rounded border"
+                    />
+                  </div>
+                )}
 
-            {/* Category Filter */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="all">All Categories</option>
-                {uniqueCategories.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Sort */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sort by Budget
-              </label>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="desc">High to Low</option>
-                <option value="asc">Low to High</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center mt-4 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600">
-              Showing {filteredList.length} of {list.length} projects
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={fetchList}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-              >
-                <span>🔄</span> Refresh
-              </button>
-              <button
-                onClick={() => navigate("/add")}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-              >
-                <span>➕</span> Add Project
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Projects Grid */}
-        {filteredList.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎵</div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
-              No projects found
-            </h3>
-            <p className="text-gray-500">
-              Try adjusting your search or filters
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredList.map((project, index) => {
-              const fundingPercentage = calculateFundingPercentage(
-                project.currentFunding,
-                project.totalBudget
-              );
-
-              return (
-                <div
-                  key={project._id || index}
-                  className="bg-white rounded-xl shadow-sm border hover:shadow-md transition-all duration-300 overflow-hidden"
-                >
-                  {/* Project Image */}
-                  <div className="relative h-48 bg-gradient-to-r from-blue-400 to-purple-500">
-                    {project.coverImage ? (
-                      <img
-                        src={project.coverImage}
-                        alt={project.productTitle}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full">
-                        <span className="text-6xl text-white opacity-50">
-                          🎵
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Status Badge */}
-                    <div
-                      className={`absolute top-3 left-3 px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                        project.productStatus
-                      )}`}
-                    >
-                      {getStatusEmoji(project.productStatus)}{" "}
-                      {project.productStatus?.charAt(0).toUpperCase() +
-                        project.productStatus?.slice(1)}
+                {product.galleryImages && product.galleryImages.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-1">
+                      Gallery ({product.galleryImages.length})
+                    </p>
+                    <div className="flex gap-1 overflow-x-auto">
+                      {product.galleryImages.slice(0, 3).map((img, idx) => (
+                        <img
+                          key={idx}
+                          src={img}
+                          alt={`Gallery ${idx + 1}`}
+                          className="w-16 h-16 object-cover rounded border flex-shrink-0"
+                        />
+                      ))}
+                      {product.galleryImages.length > 3 && (
+                        <div className="w-16 h-16 bg-gray-200 rounded border flex items-center justify-center text-xs">
+                          +{product.galleryImages.length - 3}
+                        </div>
+                      )}
                     </div>
+                  </div>
+                )}
+              </div>
 
-                    {/* Featured Badge */}
-                    {project.isFeatured && (
-                      <div className="absolute top-3 right-3 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-semibold">
-                        ⭐ Featured
-                      </div>
+              {/* Product Info */}
+              <div className="lg:col-span-2 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-xl font-bold">
+                      {product.productTitle}
+                    </h3>
+                    <p className="text-gray-600">{product.artistName}</p>
+                    {product.producerName && (
+                      <p className="text-sm text-gray-500">
+                        Producer: {product.producerName}
+                      </p>
                     )}
                   </div>
 
-                  {/* Project Content */}
-                  <div className="p-6">
-                    <div className="mb-4">
-                      <h3 className="text-xl font-bold text-gray-900 mb-1 line-clamp-1">
-                        {project.productTitle || "Untitled Project"}
-                      </h3>
-                      <p className="text-sm text-gray-600 flex items-center gap-1">
-                        <span>👤</span> {project.artistName || "Unknown Artist"}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {project.category} • {project.genre}
-                      </p>
+                  <div className="flex gap-2">
+                    {product.isFeatured && (
+                      <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs">
+                        Featured
+                      </span>
+                    )}
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        product.isActive
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {product.isActive ? "Active" : "Inactive"}
+                    </span>
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${
+                        product.productStatus === "funding"
+                          ? "bg-blue-100 text-blue-800"
+                          : product.productStatus === "in-production"
+                          ? "bg-orange-100 text-orange-800"
+                          : product.productStatus === "completed"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {product.productStatus}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-gray-700 text-sm line-clamp-3">
+                  {product.description}
+                </p>
+
+                <div className="flex gap-4 text-sm">
+                  <span className="bg-gray-100 px-2 py-1 rounded">
+                    {product.category}
+                  </span>
+                  {product.genre && (
+                    <span className="bg-gray-100 px-2 py-1 rounded">
+                      {product.genre}
+                    </span>
+                  )}
+                </div>
+
+                {/* Media Links */}
+                <div className="flex gap-4 text-sm">
+                  {product.youtubeLink && (
+                    <a
+                      href={product.youtubeLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-red-600 hover:underline"
+                    >
+                      📺 YouTube
+                    </a>
+                  )}
+                  {product.demoTrack && (
+                    <a
+                      href={product.demoTrack}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:underline"
+                    >
+                      🎵 Demo Track
+                    </a>
+                  )}
+                  {product.videoFile && (
+                    <a
+                      href={product.videoFile}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      🎬 Video File
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              {/* Funding Info */}
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Funding Progress</span>
+                    <span className="font-semibold">
+                      {product.fundingPercentage}%
+                    </span>
+                  </div>
+
+                  {/* Funding Progress Bar */}
+                  <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                    <div
+                      className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-300"
+                      style={{
+                        width: `${Math.min(product.fundingPercentage, 100)}%`,
+                      }}
+                    ></div>
+                  </div>
+
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Raised:</span>
+                      <span className="font-semibold text-green-600">
+                        {formatCurrency(product.raisedAmount || 0)}
+                      </span>
                     </div>
-
-                    {/* Funding Progress */}
-                    <div className="mb-4">
-                      <div className="flex justify-between text-sm text-gray-600 mb-1">
-                        <span>Funding Progress</span>
-                        <span>{fundingPercentage.toFixed(1)}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500"
-                          style={{
-                            width: `${Math.max(fundingPercentage, 2)}%`,
-                          }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>
-                          {formatCurrency(project.currentFunding || 0)} raised
-                        </span>
-                        <span>
-                          {formatCurrency(project.totalBudget || 0)} goal
-                        </span>
-                      </div>
+                    <div className="flex justify-between">
+                      <span>Total Budget:</span>
+                      <span className="font-semibold">
+                        {formatCurrency(product.totalBudget)}
+                      </span>
                     </div>
-
-                    {/* Project Stats */}
-                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
-                      <div>
-                        <p className="font-medium">Min. Investment</p>
-                        <p>{formatCurrency(project.minimumInvestment || 0)}</p>
-                      </div>
-                      <div>
-                        <p className="font-medium">Duration</p>
-                        <p>{project.expectedDuration || "Not specified"}</p>
-                      </div>
+                    <div className="flex justify-between">
+                      <span>Remaining:</span>
+                      <span className="font-semibold text-orange-600">
+                        {formatCurrency(product.remainingAmount)}
+                      </span>
                     </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() =>
-                          toggleActiveStatus(project._id, project.isActive)
-                        }
-                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                          project.isActive
-                            ? "bg-green-100 text-green-800 hover:bg-green-200"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                        }`}
-                      >
-                        {project.isActive ? "👁️ Active" : "🚫 Inactive"}
-                      </button>
-
-                      <button
-                        onClick={() =>
-                          toggleFeaturedStatus(project._id, project.isFeatured)
-                        }
-                        className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                          project.isFeatured
-                            ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                        }`}
-                      >
-                        {project.isFeatured ? "⭐ Featured" : "☆ Feature"}
-                      </button>
-
-                      <button
-                        onClick={() => removeProduct(project._id)}
-                        className="px-3 py-1 bg-red-100 text-red-800 hover:bg-red-200 rounded-lg text-xs font-medium transition-colors"
-                      >
-                        🗑️ Delete
-                      </button>
+                    <div className="flex justify-between">
+                      <span>Min Investment:</span>
+                      <span className="text-gray-600">
+                        {formatCurrency(product.minimumInvestment)}
+                      </span>
                     </div>
-
-                    {/* Created Date */}
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <p className="text-xs text-gray-500">
-                        Created:{" "}
-                        {new Date(
-                          project.createdAt || project.date
-                        ).toLocaleDateString()}
-                      </p>
+                    <div className="flex justify-between">
+                      <span>Investors:</span>
+                      <span className="font-semibold text-blue-600">
+                        {product.totalInvestors || 0}
+                      </span>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+
+                {/* Action Buttons */}
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() =>
+                      (window.location.href = `/investment-product/${product._id}`)
+                    }
+                    className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
+                  >
+                    View Details
+                  </button>
+                  <button
+                    onClick={() =>
+                      (window.location.href = `/edit-investment-product/${product._id}`)
+                    }
+                    className="bg-yellow-600 text-white px-3 py-2 rounded text-sm hover:bg-yellow-700"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(product._id)}
+                    className="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* YouTube Embed */}
+            {product.youtubeLink && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-sm font-medium mb-2">YouTube Preview</p>
+                <div className="aspect-video max-w-md">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${getYouTubeVideoId(
+                      product.youtubeLink
+                    )}`}
+                    title="YouTube video player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full rounded"
+                  ></iframe>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        ))}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8">
+          <div className="flex gap-2">
+            <button
+              onClick={() => fetchProducts(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-2 border rounded disabled:opacity-50"
+            >
+              Previous
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => fetchProducts(page)}
+                className={`px-3 py-2 border rounded ${
+                  currentPage === page
+                    ? "bg-blue-600 text-white"
+                    : "hover:bg-gray-100"
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              onClick={() => fetchProducts(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 border rounded disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
+      {products.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <p className="text-gray-500">No investment products found.</p>
+        </div>
+      )}
     </div>
   );
 };
 
-export default MusicProjectList;
+export default ListInvestmentProducts;

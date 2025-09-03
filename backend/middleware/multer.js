@@ -1,63 +1,67 @@
-// backend/middleware/multer.js (Updated)
+// backend/middleware/multer.js
 import multer from "multer";
 import path from "path";
 
-// ✅ Storage: Temporarily store in /uploads (Cloudinary will upload from here)
+// Configure storage
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, "uploads/"); // Save to local /uploads folder temporarily
+    destination: function(req, file, cb) {
+        cb(null, "uploads/");
     },
-    filename: (req, file, cb) => {
-        const uniqueName = `${Date.now()}-${file.originalname.replace(/\s+/g, "_")}`;
-        cb(null, uniqueName);
+    filename: function(req, file, cb) {
+        // Generate unique filename
+        const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+        const extension = path.extname(file.originalname);
+        const baseName = path.basename(file.originalname, extension);
+        cb(null, `${baseName}-${uniqueSuffix}${extension}`);
     },
 });
 
-// ✅ Filter for images and audio files
+// File filter function
 const fileFilter = (req, file, cb) => {
-    const imageTypes = /jpeg|jpg|png|webp|gif/;
-    const audioTypes = /mp3|wav|flac|aac|ogg|m4a/;
-    const videoTypes = /mp4|mov|avi|mkv/; // For demo videos
+    // Define allowed file types
+    const allowedTypes = {
+        // Images
+        "image/jpeg": [".jpg", ".jpeg"],
+        "image/jpg": [".jpg", ".jpeg"],
+        "image/png": [".png"],
+        "image/gif": [".gif"],
+        "image/webp": [".webp"],
 
-    const extname = path.extname(file.originalname).toLowerCase();
-    const mimetype = file.mimetype;
+        // Videos
+        "video/mp4": [".mp4"],
+        "video/mpeg": [".mpeg", ".mpg"],
+        "video/quicktime": [".mov"],
+        "video/x-msvideo": [".avi"],
+        "video/webm": [".webm"],
 
-    // Check for images
-    const isImage = imageTypes.test(extname) && mimetype.startsWith('image/');
+        // Audio
+        "audio/mpeg": [".mp3"],
+        "audio/wav": [".wav"],
+        "audio/x-wav": [".wav"],
+        "audio/ogg": [".ogg"],
+        "audio/mp4": [".m4a"],
+        "audio/aac": [".aac"],
+        "audio/flac": [".flac"],
+    };
 
-    // Check for audio
-    const isAudio = audioTypes.test(extname) && mimetype.startsWith('audio/');
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    const mimeType = file.mimetype.toLowerCase();
 
-    // Check for video
-    const isVideo = videoTypes.test(extname) && mimetype.startsWith('video/');
-
-    if (isImage || isAudio || isVideo) {
-        return cb(null, true);
+    // Check if the mime type and extension are allowed
+    if (allowedTypes[mimeType] && allowedTypes[mimeType].includes(fileExtension)) {
+        cb(null, true);
     } else {
-        cb(new Error(`Unsupported file type. Allowed: Images (${imageTypes.source}), Audio (${audioTypes.source}), Video (${videoTypes.source})`));
+        cb(new Error(`Unsupported file type: ${file.originalname}. Allowed types: images, videos, audio files`), false);
     }
 };
 
-// ✅ Different size limits based on file type
-const limits = {
-    fileSize: (req, file) => {
-        if (file.mimetype.startsWith('image/')) {
-            return 5 * 1024 * 1024; // 5MB for images
-        } else if (file.mimetype.startsWith('audio/')) {
-            return 50 * 1024 * 1024; // 50MB for audio
-        } else if (file.mimetype.startsWith('video/')) {
-            return 100 * 1024 * 1024; // 100MB for videos
-        }
-        return 5 * 1024 * 1024; // Default 5MB
-    },
-};
-
+// Configure multer
 const upload = multer({
-    storage,
-    fileFilter,
+    storage: storage,
+    fileFilter: fileFilter,
     limits: {
-        fileSize: 100 * 1024 * 1024, // Max 100MB (will be handled by file type)
-        files: 20, // Max 20 files per request
+        fileSize: 100 * 1024 * 1024, // 100MB limit
+        files: 15, // Maximum 15 files per request
     },
 });
 

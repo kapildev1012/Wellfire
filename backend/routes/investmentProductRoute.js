@@ -25,7 +25,9 @@ investmentProductRouter.post(
         { name: "coverImage", maxCount: 1 },
         { name: "albumArt", maxCount: 1 },
         { name: "posterImage", maxCount: 1 },
-        { name: "galleryImages", maxCount: 10 },
+        { name: "videoThumbnail", maxCount: 1 }, // For video thumbnail
+        { name: "galleryImages", maxCount: 10 }, // Multiple gallery images
+        { name: "videoFile", maxCount: 1 }, // Video file upload
         { name: "demoTrack", maxCount: 1 },
         { name: "fullTrack", maxCount: 1 },
     ]),

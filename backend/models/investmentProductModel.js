@@ -24,13 +24,19 @@ const investmentProductSchema = new mongoose.Schema({
     minimumInvestment: { type: Number, required: true, min: 100 },
 
     // Media Assets
-    coverImage: { type: String, match: /^https?:\/\// },
-    albumArt: { type: String, match: /^https?:\/\// },
-    posterImage: { type: String, match: /^https?:\/\// },
-    galleryImages: [{ type: String, match: /^https?:\/\// }],
-
-    demoTrack: { type: String, match: /^https?:\/\// },
-    fullTrack: { type: String, match: /^https?:\/\// },
+    coverImage: { type: String, default: "" },
+    albumArt: { type: String, default: "" },
+    posterImage: { type: String, default: "" },
+    galleryImages: [{ type: String }], // Array of image URLs
+    
+    // Video Assets
+    videoThumbnail: { type: String, default: "" }, // Video thumbnail image
+    videoFile: { type: String, default: "" }, // Uploaded video file URL
+    youtubeLink: { type: String, default: "" }, // YouTube video link
+    
+    // Audio Assets
+    demoTrack: { type: String, default: "" },
+    fullTrack: { type: String, default: "" },
 
     // Project Details
     expectedDuration: { type: String, default: "" }, // e.g., "3 months"
