@@ -13,7 +13,7 @@ const ListInvestmentProducts = ({ token }) => {
     category: "",
     status: "",
     featured: "",
-    active: "true",
+    active: "",
   });
 
   // Modal states
@@ -45,7 +45,7 @@ const ListInvestmentProducts = ({ token }) => {
       setLoading(true);
       const params = new URLSearchParams({
         page,
-        limit: 12,
+        limit: 15,
         search: searchTerm,
         ...filters,
       });
@@ -245,72 +245,72 @@ const ListInvestmentProducts = ({ token }) => {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Analytics Dashboard */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <div className="bg-white rounded-lg p-4 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="p-2 bg-blue-100 rounded-lg">
-                <span className="text-2xl">📊</span>
+                <span className="text-xl">📊</span>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Products</p>
-                <p className="text-2xl font-bold text-blue-600">{analytics.totalProducts}</p>
+              <div className="ml-3">
+                <p className="text-xs font-medium text-gray-500">Total Products</p>
+                <p className="text-xl font-bold text-blue-600">{analytics.totalProducts}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+          <div className="bg-white rounded-lg p-4 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="p-2 bg-green-100 rounded-lg">
-                <span className="text-2xl">💰</span>
+                <span className="text-xl">💰</span>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Funding</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(analytics.totalFunding || 0)}</p>
+              <div className="ml-3">
+                <p className="text-xs font-medium text-gray-500">Total Funding</p>
+                <p className="text-xl font-bold text-green-600">{formatCurrency(analytics.totalFunding || 0)}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+          <div className="bg-white rounded-lg p-4 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="p-2 bg-orange-100 rounded-lg">
-                <span className="text-2xl">🚀</span>
+                <span className="text-xl">🚀</span>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Active Funding</p>
-                <p className="text-2xl font-bold text-orange-600">{analytics.activeFunding}</p>
+              <div className="ml-3">
+                <p className="text-xs font-medium text-gray-500">Active Funding</p>
+                <p className="text-xl font-bold text-orange-600">{analytics.activeFunding}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+          <div className="bg-white rounded-lg p-4 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="p-2 bg-purple-100 rounded-lg">
-                <span className="text-2xl">✅</span>
+                <span className="text-xl">✅</span>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Completed</p>
-                <p className="text-2xl font-bold text-purple-600">{analytics.completedProjects}</p>
+              <div className="ml-3">
+                <p className="text-xs font-medium text-gray-500">Completed</p>
+                <p className="text-xl font-bold text-purple-600">{analytics.completedProjects}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
+          <div className="bg-white rounded-lg p-4 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="p-2 bg-indigo-100 rounded-lg">
-                <span className="text-2xl">📈</span>
+                <span className="text-xl">📈</span>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Avg Funding</p>
-                <p className="text-2xl font-bold text-indigo-600">{formatCurrency(analytics.averageFunding || 0)}</p>
+              <div className="ml-3">
+                <p className="text-xs font-medium text-gray-500">Avg Funding</p>
+                <p className="text-xl font-bold text-indigo-600">{formatCurrency(analytics.averageFunding || 0)}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white rounded-xl shadow-md border border-gray-100 p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-md border border-gray-100 p-4 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -319,17 +319,17 @@ const ListInvestmentProducts = ({ token }) => {
                   placeholder="Search products by title, artist, or description..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
-                <span className="absolute left-3 top-3 text-gray-400 text-xl">🔍</span>
+                <span className="absolute left-3 top-2.5 text-gray-400 text-lg">🔍</span>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-3">
               <select
                 value={filters.category}
                 onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-                className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">All Categories</option>
                 <option value="Music">🎵 Music</option>
@@ -342,7 +342,7 @@ const ListInvestmentProducts = ({ token }) => {
               <select
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">All Status</option>
                 <option value="funding">💰 Funding</option>
@@ -354,7 +354,7 @@ const ListInvestmentProducts = ({ token }) => {
               <select
                 value={filters.featured}
                 onChange={(e) => setFilters({ ...filters, featured: e.target.value })}
-                className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                className="px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">All Products</option>
                 <option value="true">⭐ Featured Only</option>
