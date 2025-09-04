@@ -55,7 +55,7 @@ const Navbar = () => {
               to={to}
               className={({ isActive }) =>
                 `transition duration-300 ${
-                  isActive ? "text-red-600 font-semibold" : "hover:text-red-500"
+                  isActive ? "text-white font-semibold" : "hover:text-red-500"
                 }`
               }
             >

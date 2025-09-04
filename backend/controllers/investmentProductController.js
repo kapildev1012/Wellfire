@@ -89,6 +89,26 @@ const addInvestmentProduct = async(req, res) => {
 
         console.log("✅ Basic validation passed");
 
+        // ✅ Normalize category to match allowed enum values
+        const allowedCategories = new Set(["Music", "Film", "Commercial", "Documentary", "Web Series", "Other"]);
+        const normalizeCategory = (value) => {
+            if (!value || typeof value !== "string") return "Other";
+            const trimmed = value.trim();
+            // Map common variants
+            const lower = trimmed.toLowerCase();
+            if (lower === "films") return "Film";
+            if (lower === "film") return "Film";
+            if (lower === "music") return "Music";
+            if (lower === "commercial") return "Commercial";
+            if (lower === "documentary") return "Documentary";
+            if (lower === "web series" || lower === "webseries") return "Web Series";
+            // If exact match exists, keep it
+            if (allowedCategories.has(trimmed)) return trimmed;
+            return "Other";
+        };
+        category = normalizeCategory(category);
+        console.log("🔧 Normalized category:", category);
+
         // ✅ Parse targetAudience safely
         let parsedAudience = [];
         try {
@@ -239,6 +259,17 @@ const addInvestmentProduct = async(req, res) => {
         }
 
         // ✅ Construct product data with logging
+        // ✅ Normalize genre
+        const allowedGenres = new Set(["Pop", "Rock", "Classical", "Jazz", "Hip-Hop", "Electronic", "Folk", "Country", "R&B", "Indie", "Other"]);
+        const normalizeGenre = (value) => {
+            if (!value || typeof value !== "string") return "Other";
+            const trimmed = value.trim();
+            if (allowedGenres.has(trimmed)) return trimmed;
+            return "Other";
+        };
+        genre = normalizeGenre(genre);
+        console.log("🔧 Normalized genre:", genre);
+
         const productData = {
             productTitle: productTitle.trim(),
             description: description.trim(),
@@ -246,7 +277,7 @@ const addInvestmentProduct = async(req, res) => {
             producerName: producerName ? producerName.trim() : "",
             labelName: labelName ? labelName.trim() : "",
             category: category || "Other",
-            genre: genre || "",
+            genre: genre || "Other",
             totalBudget: Number(totalBudget),
             minimumInvestment: Number(minimumInvestment),
             expectedDuration: expectedDuration || "",

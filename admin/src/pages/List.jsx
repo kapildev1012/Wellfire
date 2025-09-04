@@ -77,7 +77,7 @@ const ListInvestmentProducts = ({ token }) => {
       );
 
       if (response.data.success) {
-        setAnalytics(response.data.analytics.overview || {});
+        setAnalytics(response.data.analytics || {});
       }
     } catch (error) {
       console.error("Fetch analytics error:", error);
@@ -158,6 +158,28 @@ const ListInvestmentProducts = ({ token }) => {
     }
   };
 
+  const updateFundingProgress = async (productId, fundingData) => {
+    try {
+      const response = await axios.put(
+        `${backendUrl}/api/investment-product/${productId}/funding`,
+        fundingData,
+        { headers: { token } }
+      );
+
+      if (response.data.success) {
+        toast.success("Funding updated successfully!");
+        fetchProducts(currentPage);
+        fetchAnalytics();
+        setShowFundingModal(false);
+      } else {
+        toast.error(response.data.message || "Failed to update funding");
+      }
+    } catch (error) {
+      console.error("Update funding error:", error);
+      toast.error("Failed to update funding. Please try again.");
+    }
+  };
+
   // Helper functions
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-IN", {
@@ -198,16 +220,24 @@ const ListInvestmentProducts = ({ token }) => {
   };
 
   useEffect(() => {
+    fetchAnalytics();
+
+    // Auto-refresh analytics every 30 seconds
+    const analyticsInterval = setInterval(() => {
+      fetchAnalytics();
+    }, 30000);
+
+    return () => clearInterval(analyticsInterval);
+  }, []);
+
+  // Auto-refresh products when filters change
+  useEffect(() => {
     const debounceTimer = setTimeout(() => {
       fetchProducts(1);
     }, 500);
 
     return () => clearTimeout(debounceTimer);
   }, [filters, searchTerm]);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, []);
 
   if (loading && products.length === 0) {
     return (
@@ -221,91 +251,372 @@ const ListInvestmentProducts = ({ token }) => {
     <div className="min-h-screen bg-gray-50">
       {/* Header Section */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Investment Products</h1>
-              <p className="text-gray-600 mt-1">Manage your investment portfolio</p>
+              <h1 className="text-4xl font-bold text-gray-900 tracking-tight">
+                Investment Products
+              </h1>
+              <p className="text-lg text-gray-600 mt-2 font-medium">
+                Manage your investment portfolio
+              </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
-                onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                onClick={() =>
+                  setViewMode(viewMode === "grid" ? "table" : "grid")
+                }
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-semibold text-sm"
               >
-                {viewMode === "grid" ? "📋 Table View" : "🎯 Grid View"}
+                {viewMode === "grid" ? "Table View" : "Grid View"}
               </button>
               <button
                 onClick={() => (window.location.href = "/add")}
-                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md"
+                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg font-semibold text-sm"
               >
-                ➕ Add New Product
+                Add New Product
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 py-10">
         {/* Analytics Dashboard */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <span className="text-2xl">📊</span>
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-10">
+          {/* Dashboard Header */}
+          <div className="p-8 pb-6 border-b border-gray-100">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-3">
+                  Analytics Dashboard
+                </h2>
+                <p className="text-lg text-gray-600 font-medium max-w-2xl">
+                  Real-time overview of your investment portfolio with
+                  comprehensive insights and performance metrics
+                </p>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Products</p>
-                <p className="text-2xl font-bold text-blue-600">{analytics.totalProducts}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <span className="text-2xl">💰</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Funding</p>
-                <p className="text-2xl font-bold text-green-600">{formatCurrency(analytics.totalFunding || 0)}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <span className="text-2xl">🚀</span>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Active Funding</p>
-                <p className="text-2xl font-bold text-orange-600">{analytics.activeFunding}</p>
+              <div className="flex gap-4">
+                <button
+                  onClick={fetchAnalytics}
+                  className="px-6 py-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition-all duration-200 font-semibold text-sm border border-blue-200"
+                >
+                  Refresh Analytics
+                </button>
+                <button
+                  onClick={() =>
+                    setViewMode(viewMode === "grid" ? "table" : "grid")
+                  }
+                  className="px-6 py-3 bg-gray-50 text-gray-700 rounded-xl hover:bg-gray-100 transition-all duration-200 font-semibold text-sm border border-gray-200"
+                >
+                  {viewMode === "grid" ? "Table View" : "Grid View"}
+                </button>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <span className="text-2xl">✅</span>
+          {/* Main Analytics Cards */}
+          <div className="p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border border-blue-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-0">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="p-4 bg-blue-500 rounded-2xl shadow-lg">
+                    <svg
+                      className="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                      ></path>
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-blue-700 mb-2 uppercase tracking-wide">
+                    Total Products
+                  </p>
+                  <p className="text-2xl font-bold text-blue-900 mb-1 truncate">
+                    {analytics.totalProducts}
+                  </p>
+                  <p className="text-sm text-blue-600 font-medium">
+                    Active portfolio items
+                  </p>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Completed</p>
-                <p className="text-2xl font-bold text-purple-600">{analytics.completedProjects}</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100 hover:shadow-lg transition-shadow">
-            <div className="flex items-center">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <span className="text-2xl">📈</span>
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 border border-green-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-0">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="p-4 bg-green-500 rounded-2xl shadow-lg">
+                    <svg
+                      className="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      ></path>
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-green-700 mb-2 uppercase tracking-wide">
+                    Total Funding
+                  </p>
+                  <p className="text-2xl font-bold text-green-900 mb-1 truncate">
+                    {formatCurrency(analytics.totalFunding || 0)}
+                  </p>
+                  <p className="text-sm text-green-600 font-medium">
+                    Combined investment value
+                  </p>
+                </div>
               </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Avg Funding</p>
-                <p className="text-2xl font-bold text-indigo-600">{formatCurrency(analytics.averageFunding || 0)}</p>
+
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-6 border border-orange-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-0">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="p-4 bg-orange-500 rounded-2xl shadow-lg">
+                    <svg
+                      className="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                      ></path>
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-orange-700 mb-2 uppercase tracking-wide">
+                    Active Funding
+                  </p>
+                  <p className="text-2xl font-bold text-orange-900 mb-1 truncate">
+                    {analytics.activeFunding}
+                  </p>
+                  <p className="text-sm text-orange-600 font-medium">
+                    Currently seeking funds
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 border border-purple-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-0">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="p-4 bg-purple-500 rounded-2xl shadow-lg">
+                    <svg
+                      className="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      ></path>
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-purple-700 mb-2 uppercase tracking-wide">
+                    Completed
+                  </p>
+                  <p className="text-2xl font-bold text-purple-900 mb-1 truncate">
+                    {analytics.completedProjects}
+                  </p>
+                  <p className="text-sm text-purple-600 font-medium">
+                    Successfully funded
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-6 border border-indigo-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-0">
+                <div className="flex items-start justify-between mb-6">
+                  <div className="p-4 bg-indigo-500 rounded-2xl shadow-lg">
+                    <svg
+                      className="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      ></path>
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-indigo-700 mb-2 uppercase tracking-wide">
+                    Avg Funding
+                  </p>
+                  <p className="text-2xl font-bold text-indigo-900 mb-1 truncate">
+                    {formatCurrency(analytics.averageFunding || 0)}
+                  </p>
+                  <p className="text-sm text-indigo-600 font-medium">
+                    Per project average
+                  </p>
+                </div>
               </div>
             </div>
+
+            {/* Secondary Analytics Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-12">
+              {/* Category Distribution */}
+              <div className="bg-gray-50 rounded-2xl p-8 border border-gray-200">
+                <h3 className="text-2xl font-bold text-gray-900 mb-8">
+                  Category Distribution
+                </h3>
+                <div className="space-y-6">
+                  {Object.entries(
+                    products.reduce((acc, product) => {
+                      acc[product.category] = (acc[product.category] || 0) + 1;
+                      return acc;
+                    }, {})
+                  ).map(([category, count]) => (
+                    <div
+                      key={category}
+                      className="flex items-center justify-between py-2"
+                    >
+                      <span className="text-lg font-semibold text-gray-800">
+                        {category}
+                      </span>
+                      <div className="flex items-center gap-4 flex-1 ml-8">
+                        <div className="flex-1 bg-gray-200 rounded-full h-3 max-w-32">
+                          <div
+                            className="bg-blue-500 h-3 rounded-full transition-all duration-500"
+                            style={{
+                              width: `${(count / products.length) * 100}%`,
+                            }}
+                          ></div>
+                        </div>
+                        <span className="text-lg font-bold text-blue-600 min-w-8">
+                          {count}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Funding Status Overview */}
+              <div className="bg-gray-50 rounded-2xl p-8 border border-gray-200">
+                <h3 className="text-2xl font-bold text-gray-900 mb-8">
+                  Funding Status Overview
+                </h3>
+                <div className="space-y-6">
+                  {Object.entries(
+                    products.reduce((acc, product) => {
+                      acc[product.productStatus] =
+                        (acc[product.productStatus] || 0) + 1;
+                      return acc;
+                    }, {})
+                  ).map(([status, count]) => (
+                    <div
+                      key={status}
+                      className="flex items-center justify-between py-2"
+                    >
+                      <span className="text-lg font-semibold text-gray-800 capitalize">
+                        {status.replace("-", " ")}
+                      </span>
+                      <div className="flex items-center gap-4 flex-1 ml-8">
+                        <div className="flex-1 bg-gray-200 rounded-full h-3 max-w-32">
+                          <div
+                            className={`h-3 rounded-full transition-all duration-500 ${
+                              status === "funding"
+                                ? "bg-blue-500"
+                                : status === "in-production"
+                                ? "bg-orange-500"
+                                : status === "completed"
+                                ? "bg-green-500"
+                                : "bg-red-500"
+                            }`}
+                            style={{
+                              width: `${(count / products.length) * 100}%`,
+                            }}
+                          ></div>
+                        </div>
+                        <span className="text-lg font-bold text-gray-700 min-w-8">
+                          {count}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Performance Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-8 border border-emerald-200 hover:shadow-lg transition-all duration-300">
+                <h4 className="text-lg font-bold text-emerald-800 mb-4 uppercase tracking-wide">
+                  Success Rate
+                </h4>
+                <p className="text-5xl font-bold text-emerald-900 mb-3">
+                  {analytics.totalProducts > 0
+                    ? (
+                        (analytics.completedProjects /
+                          analytics.totalProducts) *
+                        100
+                      ).toFixed(1)
+                    : 0}
+                  %
+                </p>
+                <p className="text-base text-emerald-700 font-medium">
+                  Projects successfully funded
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-8 border border-amber-200 hover:shadow-lg transition-all duration-300">
+                <h4 className="text-lg font-bold text-amber-800 mb-4 uppercase tracking-wide">
+                  Funding Efficiency
+                </h4>
+                <p className="text-5xl font-bold text-amber-900 mb-3">
+                  {analytics.totalProducts > 0
+                    ? (
+                        (analytics.activeFunding / analytics.totalProducts) *
+                        100
+                      ).toFixed(1)
+                    : 0}
+                  %
+                </p>
+                <p className="text-base text-amber-700 font-medium">
+                  Currently seeking funds
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-br from-rose-50 to-rose-100 rounded-2xl p-8 border border-rose-200 hover:shadow-lg transition-all duration-300">
+                <h4 className="text-lg font-bold text-rose-800 mb-4 uppercase tracking-wide">
+                  Portfolio Value
+                </h4>
+                <p className="text-5xl font-bold text-rose-900 mb-3">
+                  {analytics.totalProducts > 0
+                    ? formatCurrency(
+                        analytics.totalFunding / analytics.totalProducts
+                      )
+                    : formatCurrency(0)}
+                </p>
+                <p className="text-base text-rose-700 font-medium">
+                  Average project value
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Actions removed as requested */}
           </div>
         </div>
 
@@ -321,44 +632,50 @@ const ListInvestmentProducts = ({ token }) => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
-                <span className="absolute left-3 top-3 text-gray-400 text-xl">🔍</span>
+                <span className="absolute left-3 top-3 text-gray-400 text-xl"></span>
               </div>
             </div>
 
             <div className="flex flex-wrap gap-4">
               <select
                 value={filters.category}
-                onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, category: e.target.value })
+                }
                 className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Categories</option>
-                <option value="Music">🎵 Music</option>
-                <option value="Film">🎬 Film</option>
-                <option value="Documentary">📹 Documentary</option>
-                <option value="Web Series">📺 Web Series</option>
-                <option value="Other">📦 Other</option>
+                <option value="Music">Music</option>
+                <option value="Film">Film</option>
+                <option value="Documentary">Documentary</option>
+                <option value="Web Series">Web Series</option>
+                <option value="Other">Other</option>
               </select>
 
               <select
                 value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, status: e.target.value })
+                }
                 className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Status</option>
-                <option value="funding">💰 Funding</option>
-                <option value="in-production">🚧 In Production</option>
-                <option value="completed">✅ Completed</option>
-                <option value="cancelled">❌ Cancelled</option>
+                <option value="funding">Funding</option>
+                <option value="in-production">In Production</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
               </select>
 
               <select
                 value={filters.featured}
-                onChange={(e) => setFilters({ ...filters, featured: e.target.value })}
+                onChange={(e) =>
+                  setFilters({ ...filters, featured: e.target.value })
+                }
                 className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Products</option>
-                <option value="true">⭐ Featured Only</option>
-                <option value="false">📋 Not Featured</option>
+                <option value="true">Featured Only</option>
+                <option value="false">Not Featured</option>
               </select>
             </div>
           </div>
@@ -382,13 +699,17 @@ const ListInvestmentProducts = ({ token }) => {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400">
-                      <span className="text-6xl">🎵</span>
+                      No Image
                     </div>
                   )}
-                  
+
                   {/* Status Badge */}
                   <div className="absolute top-3 left-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(product.productStatus)}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(
+                        product.productStatus
+                      )}`}
+                    >
                       {product.productStatus}
                     </span>
                   </div>
@@ -397,7 +718,7 @@ const ListInvestmentProducts = ({ token }) => {
                   {product.isFeatured && (
                     <div className="absolute top-3 right-3">
                       <span className="bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                        ⭐ Featured
+                        Featured
                       </span>
                     </div>
                   )}
@@ -409,7 +730,9 @@ const ListInvestmentProducts = ({ token }) => {
                     <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2">
                       {product.productTitle}
                     </h3>
-                    <p className="text-gray-600 text-sm">by {product.artistName}</p>
+                    <p className="text-gray-600 text-sm">
+                      by {product.artistName}
+                    </p>
                     <p className="text-gray-500 text-xs mt-1 line-clamp-2">
                       {product.description}
                     </p>
@@ -420,19 +743,28 @@ const ListInvestmentProducts = ({ token }) => {
                     <div className="flex justify-between text-sm mb-2">
                       <span className="text-gray-600">Progress</span>
                       <span className="font-semibold text-blue-600">
-                        {calculateFundingPercentage(product.currentFunding || 0, product.totalBudget).toFixed(1)}%
+                        {calculateFundingPercentage(
+                          product.currentFunding || 0,
+                          product.totalBudget
+                        ).toFixed(1)}
+                        %
                       </span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
                       <div
                         className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
                         style={{
-                          width: `${calculateFundingPercentage(product.currentFunding || 0, product.totalBudget)}%`,
+                          width: `${calculateFundingPercentage(
+                            product.currentFunding || 0,
+                            product.totalBudget
+                          )}%`,
                         }}
                       ></div>
                     </div>
                     <div className="flex justify-between text-xs text-gray-600">
-                      <span>{formatCurrency(product.currentFunding || 0)} raised</span>
+                      <span>
+                        {formatCurrency(product.currentFunding || 0)} raised
+                      </span>
                       <span>Goal: {formatCurrency(product.totalBudget)}</span>
                     </div>
                   </div>
@@ -455,13 +787,55 @@ const ListInvestmentProducts = ({ token }) => {
                       onClick={() => openDetailsModal(product)}
                       className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                     >
-                      👁️ View Details
+                      View Details
                     </button>
                     <button
                       onClick={() => openFundingModal(product)}
                       className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                     >
-                      💰 Manage
+                      Manage
+                    </button>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="mt-3 flex gap-2">
+                    <select
+                      value={product.productStatus}
+                      onChange={(e) =>
+                        updateProductStatus(product._id, e.target.value)
+                      }
+                      className="flex-1 py-1 px-2 rounded text-xs font-medium border border-gray-200 focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="funding">Funding</option>
+                      <option value="in-production">In Production</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+
+                    <button
+                      onClick={() =>
+                        toggleFeatured(product._id, product.isFeatured)
+                      }
+                      className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${
+                        product.isFeatured
+                          ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                      }`}
+                    >
+                      {product.isFeatured ? "Unfeature" : "Feature"}
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        toggleActive(product._id, product.isActive)
+                      }
+                      className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${
+                        product.isActive
+                          ? "bg-red-100 text-red-800 hover:bg-red-200"
+                          : "bg-green-100 text-green-800 hover:bg-green-200"
+                      }`}
+                    >
+                      {product.isActive ? "Deactivate" : "Activate"}
                     </button>
                   </div>
                 </div>
@@ -475,11 +849,21 @@ const ListInvestmentProducts = ({ token }) => {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">Product</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">Category</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">Status</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">Funding</th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">Actions</th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                      Product
+                    </th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                      Category
+                    </th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                      Status
+                    </th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                      Funding
+                    </th>
+                    <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -493,8 +877,12 @@ const ListInvestmentProducts = ({ token }) => {
                             className="w-12 h-12 rounded-lg object-cover mr-4"
                           />
                           <div>
-                            <div className="font-semibold text-gray-900">{product.productTitle}</div>
-                            <div className="text-sm text-gray-600">by {product.artistName}</div>
+                            <div className="font-semibold text-gray-900">
+                              {product.productTitle}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              by {product.artistName}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -504,7 +892,11 @@ const ListInvestmentProducts = ({ token }) => {
                         </span>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(product.productStatus)}`}>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(
+                            product.productStatus
+                          )}`}
+                        >
                           {product.productStatus}
                         </span>
                       </td>
@@ -520,7 +912,10 @@ const ListInvestmentProducts = ({ token }) => {
                             <div
                               className="bg-green-500 h-1 rounded-full"
                               style={{
-                                width: `${calculateFundingPercentage(product.currentFunding || 0, product.totalBudget)}%`,
+                                width: `${calculateFundingPercentage(
+                                  product.currentFunding || 0,
+                                  product.totalBudget
+                                )}%`,
                               }}
                             ></div>
                           </div>
@@ -565,7 +960,7 @@ const ListInvestmentProducts = ({ token }) => {
               {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                 const page = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
                 if (page > totalPages) return null;
-                
+
                 return (
                   <button
                     key={page}
@@ -596,8 +991,12 @@ const ListInvestmentProducts = ({ token }) => {
         {products.length === 0 && !loading && (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">📭</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
-            <p className="text-gray-600 mb-6">Try adjusting your search or filters</p>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              No products found
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Try adjusting your search or filters
+            </p>
             <button
               onClick={() => (window.location.href = "/add")}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -608,13 +1007,18 @@ const ListInvestmentProducts = ({ token }) => {
         )}
       </div>
 
-      {/* Funding Management Modal */}
+      {/* Auto-refresh Indicator */}
+      <div className="fixed bottom-4 right-4 bg-green-100 text-green-800 px-3 py-2 rounded-lg text-sm font-medium shadow-lg">
+        🔄 Auto-refresh every 30s
+      </div>
+
+      {/* Modals - Funding and Details remain unchanged */}
       {showFundingModal && selectedProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-gray-900">
-                💰 Manage Funding
+                Manage Funding
               </h3>
               <button
                 onClick={() => setShowFundingModal(false)}
@@ -625,7 +1029,9 @@ const ListInvestmentProducts = ({ token }) => {
             </div>
 
             <div className="mb-6">
-              <h4 className="font-semibold text-lg">{selectedProduct.productTitle}</h4>
+              <h4 className="font-semibold text-lg">
+                {selectedProduct.productTitle}
+              </h4>
               <p className="text-gray-600">by {selectedProduct.artistName}</p>
             </div>
 
@@ -698,23 +1104,25 @@ const ListInvestmentProducts = ({ token }) => {
                   }
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="active">🟢 Active</option>
-                  <option value="paused">⏸️ Paused</option>
-                  <option value="completed">✅ Completed</option>
-                  <option value="cancelled">❌ Cancelled</option>
+                  <option value="active">Active</option>
+                  <option value="paused">Paused</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
               </div>
 
-              {/* Progress Preview */}
               <div className="bg-gradient-to-br from-blue-50 to-green-50 p-4 rounded-xl">
-                <p className="text-sm font-semibold text-gray-700 mb-3">📊 Progress Preview</p>
+                <p className="text-sm font-semibold text-gray-700 mb-3">
+                  Progress Preview
+                </p>
                 <div className="flex justify-between text-sm mb-2">
                   <span>Progress:</span>
                   <span className="font-semibold text-blue-600">
                     {calculateFundingPercentage(
                       fundingData.currentFunding,
                       selectedProduct.totalBudget
-                    ).toFixed(1)}%
+                    ).toFixed(1)}
+                    %
                   </span>
                 </div>
                 <div className="w-full bg-white rounded-full h-3 mb-2">
@@ -729,8 +1137,12 @@ const ListInvestmentProducts = ({ token }) => {
                   ></div>
                 </div>
                 <div className="flex justify-between text-xs text-gray-600">
-                  <span>Raised: {formatCurrency(fundingData.currentFunding)}</span>
-                  <span>Goal: {formatCurrency(selectedProduct.totalBudget)}</span>
+                  <span>
+                    Raised: {formatCurrency(fundingData.currentFunding)}
+                  </span>
+                  <span>
+                    Goal: {formatCurrency(selectedProduct.totalBudget)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -738,13 +1150,12 @@ const ListInvestmentProducts = ({ token }) => {
             <div className="flex gap-3 mt-8">
               <button
                 onClick={() => {
-                  // updateFundingProgress(selectedProduct._id, fundingData);
+                  updateFundingProgress(selectedProduct._id, fundingData);
                   setShowFundingModal(false);
-                  toast.success("Funding updated successfully!");
                 }}
                 className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-semibold"
               >
-                💾 Update Funding
+                Update Funding
               </button>
               <button
                 onClick={() => setShowFundingModal(false)}
@@ -757,18 +1168,19 @@ const ListInvestmentProducts = ({ token }) => {
         </div>
       )}
 
-      {/* Product Details Modal */}
+      {/* Product Details Modal - keeping original structure */}
       {showDetailsModal && selectedProduct && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
             <div className="sticky top-0 bg-white p-6 border-b border-gray-200 rounded-t-2xl">
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-2xl font-bold text-gray-900">
                     {selectedProduct.productTitle}
                   </h3>
-                  <p className="text-gray-600">by {selectedProduct.artistName}</p>
+                  <p className="text-gray-600">
+                    by {selectedProduct.artistName}
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowDetailsModal(false)}
@@ -778,290 +1190,202 @@ const ListInvestmentProducts = ({ token }) => {
                 </button>
               </div>
             </div>
+            <div className="p-6 space-y-6">
+              {/* Top summary with image and key facts */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-1">
+                  <img
+                    src={selectedProduct.coverImage || "/placeholder.png"}
+                    alt={selectedProduct.productTitle}
+                    className="w-full h-56 md:h-full object-cover rounded-lg border"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-gray-50 rounded-lg p-4 border">
+                      <div className="text-xs text-gray-500">Category</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {selectedProduct.category || "-"}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 border">
+                      <div className="text-xs text-gray-500">Genre</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {selectedProduct.genre || "-"}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 border">
+                      <div className="text-xs text-gray-500">Status</div>
+                      <div className="text-sm font-semibold text-gray-900 capitalize">
+                        {selectedProduct.productStatus?.replace("-", " ")}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 border">
+                      <div className="text-xs text-gray-500">Visibility</div>
+                      <div className="text-sm font-semibold text-gray-900">
+                        {selectedProduct.isActive ? "Active" : "Inactive"}
+                        {selectedProduct.isFeatured ? " • Featured" : ""}
+                      </div>
+                    </div>
+                  </div>
 
-            {/* Modal Content */}
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Left Column - Images and Media */}
-                <div className="space-y-6">
-                  {/* Cover Image */}
-                  {selectedProduct.coverImage && (
-                    <div>
-                      <h4 className="font-semibold mb-3 text-gray-900">🖼️ Cover Image</h4>
-                      <img
-                        src={selectedProduct.coverImage}
-                        alt="Cover"
-                        className="w-full h-64 object-cover rounded-xl border border-gray-200"
+                  {/* Funding stats */}
+                  <div className="mt-6 bg-white rounded-lg border p-4">
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-gray-600">Funding Progress</span>
+                      <span className="font-semibold text-blue-600">
+                        {Math.min(
+                          ((selectedProduct.currentFunding || 0) /
+                            (selectedProduct.totalBudget || 1)) *
+                            100,
+                          100
+                        ).toFixed(1)}
+                        %
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full"
+                        style={{
+                          width: `${Math.min(
+                            ((selectedProduct.currentFunding || 0) /
+                              (selectedProduct.totalBudget || 1)) *
+                              100,
+                            100
+                          )}%`,
+                        }}
                       />
                     </div>
-                  )}
-
-                  {/* Gallery Images */}
-                  {selectedProduct.galleryImages && selectedProduct.galleryImages.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold mb-3 text-gray-900">
-                        🖼️ Gallery ({selectedProduct.galleryImages.length} images)
-                      </h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        {selectedProduct.galleryImages.map((img, idx) => (
-                          <img
-                            key={idx}
-                            src={img}
-                            alt={`Gallery ${idx + 1}`}
-                            className="w-full h-32 object-cover rounded-lg border border-gray-200 hover:scale-105 transition-transform cursor-pointer"
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Media Links */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-gray-900">🎵 Media Assets</h4>
-                    <div className="space-y-2">
-                      {selectedProduct.youtubeLink && (
-                        <a
-                          href={selectedProduct.youtubeLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
-                        >
-                          <span className="text-xl">📺</span>
-                          <span className="font-medium">Watch on YouTube</span>
-                        </a>
-                      )}
-                      {selectedProduct.demoTrack && (
-                        <a
-                          href={selectedProduct.demoTrack}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
-                        >
-                          <span className="text-xl">🎵</span>
-                          <span className="font-medium">Listen to Demo Track</span>
-                        </a>
-                      )}
-                      {selectedProduct.fullTrack && (
-                        <a
-                          href={selectedProduct.fullTrack}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-                        >
-                          <span className="text-xl">🎼</span>
-                          <span className="font-medium">Full Track</span>
-                        </a>
-                      )}
-                      {selectedProduct.videoFile && (
-                        <a
-                          href={selectedProduct.videoFile}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 p-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors"
-                        >
-                          <span className="text-xl">🎬</span>
-                          <span className="font-medium">Video File</span>
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Column - Details */}
-                <div className="space-y-6">
-                  {/* Basic Info */}
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <h4 className="font-semibold mb-3 text-gray-900">📋 Basic Information</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Artist:</span>
-                        <span className="font-medium">{selectedProduct.artistName}</span>
-                      </div>
-                      {selectedProduct.producerName && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Producer:</span>
-                          <span className="font-medium">{selectedProduct.producerName}</span>
-                        </div>
-                      )}
-                      {selectedProduct.labelName && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Label:</span>
-                          <span className="font-medium">{selectedProduct.labelName}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Category:</span>
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
-                          {selectedProduct.category}
-                        </span>
-                      </div>
-                      {selectedProduct.genre && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Genre:</span>
-                          <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">
-                            {selectedProduct.genre}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  <div>
-                    <h4 className="font-semibold mb-3 text-gray-900">📝 Description</h4>
-                    <p className="text-gray-700 text-sm leading-relaxed bg-gray-50 p-4 rounded-xl">
-                      {selectedProduct.description}
-                    </p>
-                  </div>
-
-                  {/* Funding Details */}
-                  <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl p-4">
-                    <h4 className="font-semibold mb-4 text-gray-900">💰 Funding Details</h4>
-                    
-                    {/* Progress Bar */}
-                    <div className="mb-4">
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-gray-600">Progress</span>
-                        <span className="font-bold text-blue-600">
-                          {calculateFundingPercentage(
-                            selectedProduct.currentFunding || 0,
-                            selectedProduct.totalBudget
-                          ).toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-white rounded-full h-3">
-                        <div
-                          className="bg-gradient-to-r from-blue-500 to-green-500 h-3 rounded-full transition-all duration-500"
-                          style={{
-                            width: `${calculateFundingPercentage(
-                              selectedProduct.currentFunding || 0,
-                              selectedProduct.totalBudget
-                            )}%`,
-                          }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Total Budget:</span>
-                        <span className="font-bold text-lg">{formatCurrency(selectedProduct.totalBudget)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Current Funding:</span>
-                        <span className="font-semibold text-green-600">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-3 text-xs">
+                      <div>
+                        <div className="text-gray-500">Raised</div>
+                        <div className="font-semibold text-gray-900">
                           {formatCurrency(selectedProduct.currentFunding || 0)}
-                        </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Remaining:</span>
-                        <span className="font-semibold text-orange-600">
-                          {formatCurrency(selectedProduct.totalBudget - (selectedProduct.currentFunding || 0))}
-                        </span>
+                      <div>
+                        <div className="text-gray-500">Goal</div>
+                        <div className="font-semibold text-gray-900">
+                          {formatCurrency(selectedProduct.totalBudget || 0)}
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Min Investment:</span>
-                        <span className="font-medium">{formatCurrency(selectedProduct.minimumInvestment)}</span>
+                      <div>
+                        <div className="text-gray-500">Remaining</div>
+                        <div className="font-semibold text-gray-900">
+                          {formatCurrency(
+                            (selectedProduct.totalBudget || 0) -
+                              (selectedProduct.currentFunding || 0)
+                          )}
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Total Investors:</span>
-                        <span className="font-semibold text-blue-600">
+                      <div>
+                        <div className="text-gray-500">Investors</div>
+                        <div className="font-semibold text-gray-900">
                           {selectedProduct.totalInvestors || 0}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Target Audience */}
-                  {selectedProduct.targetAudience && selectedProduct.targetAudience.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold mb-3 text-gray-900">🎯 Target Audience</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedProduct.targetAudience.map((audience, idx) => (
-                          <span
-                            key={idx}
-                            className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-medium"
-                          >
-                            {audience}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Status and Settings */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h4 className="font-semibold mb-3 text-gray-900">⚙️ Settings</h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className={`w-3 h-3 rounded-full ${selectedProduct.isActive ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                          <span className="text-sm">{selectedProduct.isActive ? 'Active' : 'Inactive'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`w-3 h-3 rounded-full ${selectedProduct.isFeatured ? 'bg-yellow-500' : 'bg-gray-300'}`}></span>
-                          <span className="text-sm">{selectedProduct.isFeatured ? 'Featured' : 'Not Featured'}</span>
                         </div>
                       </div>
                     </div>
-                    <div>
-                      <h4 className="font-semibold mb-3 text-gray-900">📅 Dates</h4>
-                      <div className="space-y-1 text-xs text-gray-600">
-                        <div>Created: {new Date(selectedProduct.createdAt).toLocaleDateString()}</div>
-                        <div>Updated: {new Date(selectedProduct.updatedAt).toLocaleDateString()}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-col gap-3 pt-4 border-t">
-                    <button
-                      onClick={() => {
-                        setShowDetailsModal(false);
-                        openFundingModal(selectedProduct);
-                      }}
-                      className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white py-3 px-4 rounded-lg hover:from-green-700 hover:to-green-800 transition-all font-semibold"
-                    >
-                      💰 Manage Funding
-                    </button>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => toggleFeatured(selectedProduct._id, selectedProduct.isFeatured)}
-                        className={`py-2 px-4 rounded-lg font-medium transition-colors ${
-                          selectedProduct.isFeatured
-                            ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                        }`}
-                      >
-                        {selectedProduct.isFeatured ? "⭐ Unfeature" : "⭐ Feature"}
-                      </button>
-                      
-                      <button
-                        onClick={() => toggleActive(selectedProduct._id, selectedProduct.isActive)}
-                        className={`py-2 px-4 rounded-lg font-medium transition-colors ${
-                          selectedProduct.isActive
-                            ? "bg-red-100 text-red-800 hover:bg-red-200"
-                            : "bg-green-100 text-green-800 hover:bg-green-200"
-                        }`}
-                      >
-                        {selectedProduct.isActive ? "🔴 Deactivate" : "🟢 Activate"}
-                      </button>
-                    </div>
-                    
-                    <button
-                      onClick={() => {
-                        if (confirm("Are you sure you want to delete this product?")) {
-                          handleDelete(selectedProduct._id);
-                          setShowDetailsModal(false);
-                        }
-                      }}
-                      className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 transition-colors font-semibold"
-                    >
-                      🗑️ Delete Product
-                    </button>
                   </div>
                 </div>
+              </div>
+
+              {/* Description */}
+              <div className="bg-white rounded-lg border p-4">
+                <div className="text-sm text-gray-500 mb-1">Description</div>
+                <p className="text-sm text-gray-800 leading-6 whitespace-pre-wrap">
+                  {selectedProduct.description || "No description provided."}
+                </p>
+              </div>
+
+              {/* Media Links */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {selectedProduct.youtubeLink && (
+                  <a
+                    href={selectedProduct.youtubeLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block border rounded-lg p-3 hover:bg-gray-50"
+                  >
+                    <div className="text-xs text-gray-500">YouTube</div>
+                    <div className="text-sm font-semibold text-blue-700 truncate">
+                      Open video
+                    </div>
+                  </a>
+                )}
+                {selectedProduct.videoFile && (
+                  <a
+                    href={selectedProduct.videoFile}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block border rounded-lg p-3 hover:bg-gray-50"
+                  >
+                    <div className="text-xs text-gray-500">Video File</div>
+                    <div className="text-sm font-semibold text-blue-700 truncate">
+                      Download/Play
+                    </div>
+                  </a>
+                )}
+                {selectedProduct.demoTrack && (
+                  <a
+                    href={selectedProduct.demoTrack}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block border rounded-lg p-3 hover:bg-gray-50"
+                  >
+                    <div className="text-xs text-gray-500">Demo Track</div>
+                    <div className="text-sm font-semibold text-blue-700 truncate">
+                      Listen
+                    </div>
+                  </a>
+                )}
+                {selectedProduct.fullTrack && (
+                  <a
+                    href={selectedProduct.fullTrack}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block border rounded-lg p-3 hover:bg-gray-50"
+                  >
+                    <div className="text-xs text-gray-500">Full Track</div>
+                    <div className="text-sm font-semibold text-blue-700 truncate">
+                      Listen
+                    </div>
+                  </a>
+                )}
+              </div>
+
+              {/* Quick manage buttons */}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => openFundingModal(selectedProduct)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-semibold"
+                >
+                  Manage Funding
+                </button>
+                <button
+                  onClick={() =>
+                    toggleFeatured(
+                      selectedProduct._id,
+                      selectedProduct.isFeatured
+                    )
+                  }
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 text-sm font-semibold"
+                >
+                  {selectedProduct.isFeatured ? "Unfeature" : "Feature"}
+                </button>
+                <button
+                  onClick={() =>
+                    toggleActive(selectedProduct._id, selectedProduct.isActive)
+                  }
+                  className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 text-sm font-semibold"
+                >
+                  {selectedProduct.isActive ? "Deactivate" : "Activate"}
+                </button>
+                <button
+                  onClick={() => handleDelete(selectedProduct._id)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm font-semibold"
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>

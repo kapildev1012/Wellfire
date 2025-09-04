@@ -10,11 +10,11 @@ const investmentProductSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
-        enum: ["Music", "Film", "Documentary", "Web Series", "Other"]
+        enum: ["Music", "Film", "Commercial", "Documentary", "Web Series", "Other"]
     },
     genre: {
         type: String,
-        default: "",
+        default: "Other",
         enum: ["Pop", "Rock", "Classical", "Jazz", "Hip-Hop", "Electronic", "Folk", "Country", "R&B", "Indie", "Other"]
     },
 
