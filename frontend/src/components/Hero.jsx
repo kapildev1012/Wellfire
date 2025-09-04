@@ -8,6 +8,7 @@ const Hero = () => {
   const videoRef = useRef(null);
   const [showText, setShowText] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
 
   // Check if device is mobile
   useEffect(() => {
@@ -63,7 +64,7 @@ const Hero = () => {
             src={heroVideo}
             autoPlay
             loop
-            muted
+            muted={isMuted}
             playsInline
             className="w-full h-auto max-h-screen object-contain"
           />
@@ -105,59 +106,78 @@ const Hero = () => {
         </motion.section>
       )}
 
-      {/* Mobile Layout */}
+      {/* Mobile Layout - Reels-like */}
       {isMobile && (
         <div className="w-full">
-          {/* Video Section */}
           <motion.section
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1.2, ease: "easeOut" }}
-            className="relative w-full flex items-center justify-center overflow-hidden"
+            className="relative w-full h-[100svh] min-h-screen overflow-hidden"
           >
             <video
               ref={videoRef}
               src={heroVideo}
               autoPlay
               loop
-              muted
+              muted={isMuted}
               playsInline
-              className="w-full h-auto object-contain"
+              className="absolute inset-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-black/10 pointer-events-none"></div>
-          </motion.section>
 
-          {/* Text Section Below Video */}
-          <AnimatePresence>
-            {showText && (
-              <motion.section
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -50 }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
-                className="w-full bg-black text-white py-12 px-4"
-              >
-                <div className="text-center uppercase tracking-wider max-w-md mx-auto">
-                  <motion.h1
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
-                    className="text-2xl sm:text-3xl mb-4"
-                  >
-                    YOUR TITLE HERE
-                  </motion.h1>
-                  <motion.p
-                    initial={{ opacity: 0, y: 30 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.8, delay: 0.4 }}
-                    className="text-xs sm:text-sm mb-6"
-                  >
-                    YOUR SUBTITLE OR DESCRIPTION HERE
-                  </motion.p>
-                </div>
-              </motion.section>
-            )}
-          </AnimatePresence>
+            {/* Gradient overlay for readability */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+
+            {/* Mute toggle */}
+            <button
+              type="button"
+              onClick={() => setIsMuted((m) => !m)}
+              aria-label={isMuted ? "Unmute video" : "Mute video"}
+              className="absolute right-4 top-4 z-20 rounded-full bg-black/40 text-white p-2 backdrop-blur-sm"
+            >
+              {isMuted ? (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                  <path d="M11.25 3.106a.75.75 0 0 1 .75.75v16.288a.75.75 0 0 1-1.2.6L6.3 17.25H3.75A1.75 1.75 0 0 1 2 15.5v-7A1.75 1.75 0 0 1 3.75 6.75H6.3l4.5-3.494a.75.75 0 0 1 .45-.15zM16.72 8.47a.75.75 0 0 1 1.06 0L19 9.69l1.22-1.22a.75.75 0 1 1 1.06 1.06L20.06 10.75l1.22 1.22a.75.75 0 1 1-1.06 1.06L19 11.81l-1.22 1.22a.75.75 0 1 1-1.06-1.06l1.22-1.22-1.22-1.22a.75.75 0 0 1 0-1.06z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                  <path d="M11.25 3.106a.75.75 0 0 1 .75.75v16.288a.75.75 0 0 1-1.2.6L6.3 17.25H3.75A1.75 1.75 0 0 1 2 15.5v-7A1.75 1.75 0 0 1 3.75 6.75H6.3l4.5-3.494a.75.75 0 0 1 .45-.15zM16.5 8.25a.75.75 0 0 1 .75.75v5a.75.75 0 0 1-1.5 0v-5a.75.75 0 0 1 .75-.75zm3 1.5a.75.75 0 0 1 .75.75v2a.75.75 0 0 1-1.5 0v-2a.75.75 0 0 1 .75-.75z" />
+                </svg>
+              )}
+            </button>
+
+            {/* Text overlay */}
+            <AnimatePresence>
+              {showText && (
+                <motion.div
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 40 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="absolute inset-x-0 bottom-0 z-10 p-6 text-white"
+                >
+                  <div className="uppercase tracking-wider">
+                    <motion.h1
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.1 }}
+                      className="text-2xl sm:text-3xl mb-2"
+                    >
+                      YOUR TITLE HERE
+                    </motion.h1>
+                    <motion.p
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.2 }}
+                      className="text-xs sm:text-sm opacity-90"
+                    >
+                      YOUR SUBTITLE OR DESCRIPTION HERE
+                    </motion.p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.section>
         </div>
       )}
     </div>
