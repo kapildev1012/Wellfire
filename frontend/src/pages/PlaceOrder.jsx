@@ -59,6 +59,7 @@ const PlaceOrder = () => {
             { headers: { token } }
           );
           if (data.success) {
+            window.scrollTo(0, 0);
             navigate("/orders");
             setCartItems({});
           }
@@ -113,6 +114,7 @@ const PlaceOrder = () => {
           );
           if (response.data.success) {
             setCartItems({});
+            window.scrollTo(0, 0);
             navigate("/orders");
           } else {
             toast.error(response.data.message);

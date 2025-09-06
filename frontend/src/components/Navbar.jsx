@@ -12,6 +12,7 @@ const Navbar = () => {
   const { navigate, token, setToken, setCartItems } = useContext(ShopContext);
 
   const logout = () => {
+    window.scrollTo(0, 0);
     navigate("/login");
     localStorage.removeItem("token");
     setToken("");
@@ -69,9 +70,14 @@ const Navbar = () => {
           {/* Profile */}
           <div className="relative hidden md:block" ref={dropdownRef}>
             <button
-              onClick={() =>
-                token ? setDropdownOpen(!dropdownOpen) : navigate("/login")
-              }
+              onClick={() => {
+                if (token) {
+                  setDropdownOpen(!dropdownOpen);
+                } else {
+                  window.scrollTo(0, 0);
+                  navigate("/login");
+                }
+              }}
               className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center hover:ring-2 ring-gray-900 transition-transform hover:scale-105"
             >
               <img
@@ -87,6 +93,7 @@ const Navbar = () => {
                 <div
                   className="px-4 py-2 hover:bg-gray-50 cursor-pointer"
                   onClick={() => {
+                    window.scrollTo(0, 0);
                     navigate("/orders");
                     setDropdownOpen(false);
                   }}

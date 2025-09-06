@@ -74,7 +74,10 @@ const Cart = () => {
                 className="w-44 h-44 object-contain rounded-md border shadow-lg hover:scale-110 transition-transform"
               />
               <button
-                onClick={() => navigate("/collection")}
+                onClick={() => {
+                  window.scrollTo(0, 0);
+                  navigate("/collection");
+                }}
                 className="mt-4 bg-gray-900 hover:bg-gray-800 text-white font-semibold px-5 py-2.5 rounded-full text-sm shadow"
               >
                 Start Shopping
@@ -280,7 +283,10 @@ const Cart = () => {
               )}
 
               <button
-                onClick={() => navigate("/place-order")}
+                onClick={() => {
+                  window.scrollTo(0, 0);
+                  navigate("/place-order");
+                }}
                 className="w-full bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold py-3 mt-4 rounded-full shadow-md transition"
               >
                 Place Your Order

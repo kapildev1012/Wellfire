@@ -29,7 +29,10 @@ const ExploreMenu = ({ category, setCategory }) => {
           experience.
         </p>
         <motion.button
-          onClick={() => navigate("/menu")}
+          onClick={() => {
+            window.scrollTo(0, 0);
+            navigate("/menu");
+          }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 1 }}
           className="bg-white text-black py-3 px-10 mt-6 rounded-xl shadow-lg transform transition-all hover:bg-gray-200 focus:outline-none"

@@ -30,8 +30,10 @@ const Verify = () => {
 
       if (response.data.success) {
         setCartItems({});
+        window.scrollTo(0, 0);
         navigate("/orders");
       } else {
+        window.scrollTo(0, 0);
         navigate("/cart");
       }
     } catch (error) {

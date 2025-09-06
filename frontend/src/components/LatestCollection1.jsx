@@ -547,7 +547,7 @@ const CategoryShowcase = ({ category, title }) => {
         <button
           onClick={() => {
             window.scrollTo(0, 0);
-            navigate('/photo');
+            navigate('/Photo');
           }}
           className="text-white hover:text-gray-300 transition-colors duration-300 group"
           style={{

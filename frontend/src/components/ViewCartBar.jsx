@@ -61,11 +61,13 @@ const ViewCartBar = () => {
 
   const handleCartClick = (e) => {
     e.stopPropagation();
+    window.scrollTo(0, 0);
     navigate("/cart");
   };
 
   const handleSelectItems = (e) => {
     e.stopPropagation();
+    window.scrollTo(0, 0);
     navigate("/collection");
   };
 

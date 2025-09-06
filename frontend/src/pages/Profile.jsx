@@ -26,7 +26,7 @@ const Profile = () => {
     localStorage.removeItem("token");
     setToken("");
     setCartItems({});
-    toast.success("Logged out successfully!");
+    window.scrollTo(0, 0);
     navigate("/login");
   };
 
@@ -64,6 +64,7 @@ const Profile = () => {
 
   useEffect(() => {
     if (!token) {
+      window.scrollTo(0, 0);
       navigate("/login");
     } else {
       fetchUser();

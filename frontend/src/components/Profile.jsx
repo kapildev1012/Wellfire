@@ -10,6 +10,7 @@ const Profile = () => {
     localStorage.removeItem("token");
     setToken("");
     setCartItems({});
+    window.scrollTo(0, 0);
     navigate("/login");
   };
 

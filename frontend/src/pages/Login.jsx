@@ -44,6 +44,7 @@ const Login = () => {
 
   useEffect(() => {
     if (token) {
+      window.scrollTo(0, 0);
       navigate("/");
     }
   }, [token]);
