@@ -1,10 +1,12 @@
 import axios from "axios";
 import { motion } from "framer-motion";
 import React, { useContext, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ShopContext } from "../context/ShopContext";
 
 const CategoryShowcase = ({ category, title }) => {
   const { products } = useContext(ShopContext);
+  const navigate = useNavigate();
   const [categoryProducts, setCategoryProducts] = useState([]);
   const [isMobile, setIsMobile] = useState(false);
   const [investmentProducts, setInvestmentProducts] = useState([]);
@@ -103,6 +105,9 @@ const CategoryShowcase = ({ category, title }) => {
   }, [investmentProducts, category]);
 
   const handleImageClick = (product) => {
+    // Scroll to top before opening new content
+    window.scrollTo(0, 0);
+    
     if (product.youtubeLink) {
       let youtubeUrl = product.youtubeLink;
 
@@ -523,9 +528,9 @@ const CategoryShowcase = ({ category, title }) => {
 
   return (
     <div className="w-full">
-      {/* Category Title */}
+      {/* Category Title with View All Button */}
       <motion.div
-        className="mb-6"
+        className="mb-6 flex justify-between items-center"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
@@ -539,13 +544,28 @@ const CategoryShowcase = ({ category, title }) => {
         >
           {title}
         </h2>
+        <button
+          onClick={() => {
+            window.scrollTo(0, 0);
+            navigate('/photo');
+          }}
+          className="text-white hover:text-gray-300 transition-colors duration-300 group"
+          style={{
+            fontFamily: "Montserrat, sans-serif",
+            fontWeight: "600",
+          }}
+        >
+          <span className="text-sm sm:text-base uppercase tracking-wider border-b border-transparent group-hover:border-white transition-all duration-300">
+            View All
+          </span>
+        </button>
       </motion.div>
 
       {/* Main Content */}
       <div
         className="w-full overflow-hidden relative rounded-lg shadow-2xl border border-black"
         style={{
-          aspectRatio: isMobile ? "1/1.2" : "5/2",
+          aspectRatio: isMobile ? "5/3" : "5/2",
           background: "rgba(0, 0, 0, 0.9)",
         }}
       >
@@ -573,30 +593,32 @@ const CategoryShowcase = ({ category, title }) => {
               ))}
             </div>
 
-            {/* Right Side - Scrolling Photos with 2:5 aspect ratio (50% width) */}
+            {/* Right Side - Scrolling Photos (50% width) */}
             <div className="w-1/2 h-full overflow-hidden flex flex-col justify-center p-0 gap-0">
-              {rightProducts.length > 0 ? (
+              {categoryProducts.length > 0 ? (
                 <motion.div
                   className="flex flex-col gap-0"
                   animate={{
-                    y: [0, -(rightProducts.length * 120)], // Adjusted for spacing
+                    y: ["0%", "-50%"], // Smooth continuous scroll
                   }}
                   transition={{
-                    duration: rightProducts.length * 2,
+                    duration: categoryProducts.length * 3,
                     ease: "linear",
                     repeat: Infinity,
                   }}
                 >
-                  {rightProducts
-                    .concat(rightProducts.slice(0, 1))
+                  {categoryProducts
+                    .concat(categoryProducts)
                     .map((product, index) => (
                       <div
                         key={`scroll-${index}`}
                         className="flex-shrink-0 mb-0"
                       >
-                        <ProductVideoCard
+                        <ProductCard
                           product={product}
                           className="w-full"
+                          isRightSide={true}
+                          showTitle={true}
                         />
                       </div>
                     ))}
@@ -622,10 +644,10 @@ const CategoryShowcase = ({ category, title }) => {
             </div>
           </div>
         ) : (
-          /* Mobile Layout - Bigger sections */
-          <div className="flex flex-col h-full">
-            {/* Top Section - Left photos side by side (60% height for mobile) */}
-            <div className="w-full h-1/2 flex">
+          /* Mobile Layout - Only left side photos */
+          <div className="flex h-full">
+            {/* Only Left photos side by side (full width for mobile) */}
+            <div className="w-full h-full flex">
               {leftProducts.map((product, index) => (
                 <div key={`mobile-left-${index}`} className="w-1/2 h-full">
                   <ProductCard
@@ -636,54 +658,6 @@ const CategoryShowcase = ({ category, title }) => {
                   />
                 </div>
               ))}
-            </div>
-
-            {/* Bottom Section - Scrolling section (40% height for mobile) */}
-            <div className="w-full h-1/5 overflow-hidden p-2">
-              {rightProducts.length > 0 ? (
-                <motion.div
-                  className="flex flex-row gap-2"
-                  animate={{
-                    x: [0, -(rightProducts.length * 120)], // Adjusted for spacing
-                  }}
-                  transition={{
-                    duration: rightProducts.length * 3,
-                    ease: "linear",
-                    repeat: Infinity,
-                  }}
-                >
-                  {rightProducts
-                    .concat(rightProducts.slice(0, 1))
-                    .map((product, index) => (
-                      <div
-                        key={`mobile-scroll-${index}`}
-                        className="flex-shrink-0 mr-2"
-                      >
-                        <ProductVideoCard
-                          product={product}
-                          className="h-full"
-                        />
-                      </div>
-                    ))}
-                </motion.div>
-              ) : (
-                <div
-                  className="w-full h-full flex items-center justify-center"
-                  style={{
-                    background: "rgba(0, 0, 0, 0.8)",
-                  }}
-                >
-                  <p
-                    className="text-white text-xs text-center px-2"
-                    style={{
-                      fontFamily: "Montserrat, sans-serif",
-                      fontWeight: "600",
-                    }}
-                  >
-                    More {title}...
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         )}

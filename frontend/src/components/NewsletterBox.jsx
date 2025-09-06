@@ -27,29 +27,29 @@ const Timeline = () => {
   ];
 
   return (
-    <div className="bg-black text-white py-16 px-6">
+    <div className="bg-black text-white py-12 px-4">
       {/* Section Heading */}
-      <h2 className="text-4xl font-serif font-semibold text-center mb-12">
+      <h2 className="text-2xl font-serif font-semibold text-center mb-8">
         Our Timeline
       </h2>
 
       {/* Timeline Items */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-10 max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         {items.map((item) => (
-          <div key={item.id} className="flex flex-col items-start">
+          <div key={item.id} className="flex flex-col items-start bg-gray-900 p-4 rounded-lg">
             {/* Play Icon */}
-            <div className="text-red-500 mb-4 text-2xl">
-              <FaPlay className="border-2 border-red-500 rounded-md p-1 w-8 h-8" />
+            <div className="text-red-500 mb-3 text-lg">
+              <FaPlay className="border-2 border-red-500 rounded-md p-1 w-6 h-6" />
             </div>
 
             {/* Title */}
-            <h3 className="text-2xl font-bold mb-2">{item.title}</h3>
+            <h3 className="text-lg font-bold mb-2">{item.title}</h3>
 
             {/* Subtitle */}
-            <p className="font-semibold mb-3">{item.subtitle}</p>
+            <p className="text-sm font-semibold mb-2">{item.subtitle}</p>
 
             {/* Description */}
-            <p className="text-gray-300 text-sm leading-relaxed">
+            <p className="text-gray-300 text-xs leading-relaxed">
               {item.description}
             </p>
           </div>

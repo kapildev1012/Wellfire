@@ -24,7 +24,7 @@ connectCloudinary();
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cors({
-    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000", "https://your-frontend-domain.com"],
+    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176", "http://localhost:3000", "https://your-frontend-domain.com"],
     credentials: true
 }));
 
@@ -102,8 +102,32 @@ app.use("*", (req, res) => {
     });
 });
 
-app.listen(port, () => {
+// Graceful shutdown handler
+const gracefulShutdown = (signal) => {
+    console.log(`\n🔄 Received ${signal}. Graceful shutdown...`);
+    server.close(() => {
+        console.log('✅ Server closed successfully');
+        process.exit(0);
+    });
+};
+
+// Start server with error handling
+const server = app.listen(port, () => {
     console.log(`🚀 Investment Platform Server started on port ${port}`);
     console.log(`📍 Server URL: http://localhost:${port}`);
     console.log(`🌐 Test endpoint: http://localhost:${port}/api/investment-product/list`);
+}).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${port} is already in use`);
+        console.error('💡 Try running: lsof -ti:4000 | xargs kill -9');
+        process.exit(1);
+    } else {
+        console.error('❌ Server error:', err);
+        process.exit(1);
+    }
 });
+
+// Handle process termination
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')); // nodemon restart

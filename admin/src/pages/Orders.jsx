@@ -520,7 +520,7 @@ const [topSellingItems, setTopSellingItems] = useState([]);
                 <div style={{ textAlign: "center", marginBottom: "10px" }}>
                   <img
                     src="/logo.png"
-                    alt="zippin"
+                    alt="wellfire"
                     width="50"
                     style={{ marginBottom: "6px" }}
                   />
@@ -531,7 +531,7 @@ const [topSellingItems, setTopSellingItems] = useState([]);
                       fontSize: "12px",
                     }}
                   >
-                    ZIPPIN PRIVATE LIMITED
+                    WELLFIRE PRIVATE LIMITED
                   </p>
                   <p>4th Floor, New Excelsior Building</p>
                   <p>Amrit Keshav Marg, Fort, Mumbai - 400001</p>
@@ -556,7 +556,7 @@ const [topSellingItems, setTopSellingItems] = useState([]);
                     minute: "2-digit",
                   })}
                 </p>
-                <p>Partner : Zippin Admin</p>
+                <p>Partner : Wellfire Admin</p>
                 <p
                   style={{ borderTop: "1px dashed #000", margin: "6px 0" }}
                 ></p>
@@ -754,7 +754,7 @@ const [topSellingItems, setTopSellingItems] = useState([]);
                           letterSpacing: "0.3px",
                         }}
                       >
-                        THANK YOU FOR VISITING ZIPPIN
+                        THANK YOU FOR VISITING WELLFIRE
                       </p>
                     </>
                   );

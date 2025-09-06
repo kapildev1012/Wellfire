@@ -18,6 +18,11 @@ const Cart = () => {
   const navigate = useNavigate();
   const [cartData, setCartData] = useState([]);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const subtotal = getCartAmount();
   const cartCount = getCartCount();
   const freeDeliveryThreshold = 200;

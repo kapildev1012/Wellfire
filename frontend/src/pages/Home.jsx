@@ -1,19 +1,24 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Hero from "../components/Hero";
 import LatestCollection1 from "../components/LatestCollection1";
 import LatestCollection2 from "../components/LatestCollection2";
-import About from "../pages/About"
+import AboutPreview from "../components/AboutPreview";
 import OurPolicy from "../components/OurPolicy";
 import NewsletterBox from "../components/NewsletterBox";
 import Services from "../pages/Services"
 
 const Home = () => {
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div>
       <Hero />
      
       <LatestCollection1 />
-      <About />
+      <AboutPreview />
       <Services />
     
       <NewsletterBox />

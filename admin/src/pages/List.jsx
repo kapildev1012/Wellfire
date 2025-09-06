@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { toast } from "react-toastify";
 import { backendUrl } from "../App";
 
@@ -38,14 +38,23 @@ const ListInvestmentProducts = ({ token }) => {
 
   // View mode
   const [viewMode, setViewMode] = useState("grid"); // "grid" or "table"
+  
+  // Pagination states
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [isNavigating, setIsNavigating] = useState(false);
 
-  // Fetch products with enhanced filtering
-  const fetchProducts = async (page = 1) => {
+  // Enhanced fetch products with pagination
+  const fetchProducts = useCallback(async (page = 1, showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) {
+        setLoading(true);
+      } else {
+        setIsNavigating(true);
+      }
+      
       const params = new URLSearchParams({
         page,
-        limit: 12,
+        limit: 500,
         search: searchTerm,
         ...filters,
       });
@@ -56,17 +65,34 @@ const ListInvestmentProducts = ({ token }) => {
       );
 
       if (response.data.success) {
-        setProducts(response.data.products);
-        setCurrentPage(response.data.pagination.currentPage);
-        setTotalPages(response.data.pagination.totalPages);
+        console.log('API Response:', response.data);
+        console.log('Products received:', response.data.products?.length);
+        console.log('Pagination info:', response.data.pagination);
+        
+        setProducts(response.data.products || []);
+        setCurrentPage(response.data.pagination?.currentPage || 1);
+        setTotalPages(response.data.pagination?.totalPages || 1);
+        setTotalProducts(response.data.pagination?.totalProducts || response.data.products?.length || 0);
+        
+        // Update URL without page reload
+        const url = new URL(window.location);
+        url.searchParams.set('page', page);
+        window.history.replaceState({}, '', url);
       }
     } catch (error) {
       console.error("Fetch products error:", error);
-      toast.error("Failed to fetch products");
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        url: `${backendUrl}/api/investment-product/list`
+      });
+      toast.error(`Failed to fetch products: ${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(false);
+      setIsNavigating(false);
     }
-  };
+  }, [searchTerm, filters, token]);
 
   // Fetch analytics
   const fetchAnalytics = async () => {
@@ -180,6 +206,47 @@ const ListInvestmentProducts = ({ token }) => {
     }
   };
 
+  // Enhanced pagination handlers
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages && page !== currentPage) {
+      fetchProducts(page, false);
+    }
+  };
+
+  const goToFirstPage = () => handlePageChange(1);
+  const goToLastPage = () => handlePageChange(totalPages);
+  const goToPreviousPage = () => handlePageChange(currentPage - 1);
+  const goToNextPage = () => handlePageChange(currentPage + 1);
+
+  // Generate page numbers with ellipsis for large page counts
+  const generatePageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 7;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 4) {
+        for (let i = 1; i <= 5; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) pages.push(i);
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+    return pages;
+  };
+
   // Helper functions
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("en-IN", {
@@ -217,27 +284,48 @@ const ListInvestmentProducts = ({ token }) => {
   const openDetailsModal = (product) => {
     setSelectedProduct(product);
     setShowDetailsModal(true);
-  };
+  }
 
+  // Initialize from URL parameters
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pageFromUrl = parseInt(urlParams.get('page')) || 1;
+    setCurrentPage(pageFromUrl);
+    fetchProducts(pageFromUrl);
     fetchAnalytics();
+  }, []);  
 
-    // Auto-refresh analytics every 30 seconds
-    const analyticsInterval = setInterval(() => {
-      fetchAnalytics();
-    }, 30000);
-
-    return () => clearInterval(analyticsInterval);
-  }, []);
 
   // Auto-refresh products when filters change
   useEffect(() => {
-    const debounceTimer = setTimeout(() => {
+    if (searchTerm !== "" || Object.values(filters).some(filter => filter !== "" && filter !== "true")) {
       fetchProducts(1);
-    }, 500);
+    }
+  }, [searchTerm, filters, fetchProducts]);
 
-    return () => clearTimeout(debounceTimer);
-  }, [filters, searchTerm]);
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      
+      if (e.key === 'ArrowLeft' && currentPage > 1) {
+        e.preventDefault();
+        handlePageChange(currentPage - 1);
+      } else if (e.key === 'ArrowRight' && currentPage < totalPages) {
+        e.preventDefault();
+        handlePageChange(currentPage + 1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        handlePageChange(1);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        handlePageChange(totalPages);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentPage, totalPages]);
 
   if (loading && products.length === 0) {
     return (
@@ -248,33 +336,48 @@ const ListInvestmentProducts = ({ token }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header Section */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-black text-white shadow-2xl border-b-4 border-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900 tracking-tight">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="bg-white text-black px-4 py-2 font-bold text-lg tracking-wider">
+                  WELLFIRE
+                </div>
+                <div className="bg-gray-800 text-white px-3 py-1 text-sm font-bold tracking-wider border border-gray-600">
+                  ADMIN
+                </div>
+              </div>
+              <h1 className="text-4xl font-bold text-white tracking-tight mb-3">
                 Investment Products
               </h1>
-              <p className="text-lg text-gray-600 mt-2 font-medium">
-                Manage your investment portfolio
+              <p className="text-gray-300 text-lg font-medium max-w-2xl">
+                Manage your investment portfolio with precision and control
               </p>
             </div>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <button
-                onClick={() =>
-                  setViewMode(viewMode === "grid" ? "table" : "grid")
-                }
-                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-semibold text-sm"
+                onClick={() => setShowAddModal(true)}
+                className="px-8 py-4 bg-white text-black rounded-none hover:bg-gray-200 transition-all duration-200 font-bold text-lg border-2 border-white shadow-lg hover:shadow-xl flex items-center gap-3 group"
               >
-                {viewMode === "grid" ? "Table View" : "Grid View"}
-              </button>
-              <button
-                onClick={() => (window.location.href = "/add")}
-                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-lg font-semibold text-sm"
-              >
-                Add New Product
+                <svg
+                  className="w-6 h-6 group-hover:rotate-90 transition-transform duration-200"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 4v16m8-8H4"
+                  ></path>
+                </svg>
+                <span className="tracking-wider">
+                  ADD NEW PRODUCT
+                </span>
               </button>
             </div>
           </div>
@@ -283,46 +386,43 @@ const ListInvestmentProducts = ({ token }) => {
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-10">
         {/* Analytics Dashboard */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-200 mb-10">
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 mb-6">
           {/* Dashboard Header */}
-          <div className="p-8 pb-6 border-b border-gray-100">
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="p-4 pb-3 border-b border-gray-200">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                  Analytics Dashboard
+                <h2 className="text-lg font-bold text-black mb-1 tracking-wider">
+                  ANALYTICS DASHBOARD
                 </h2>
-                <p className="text-lg text-gray-600 font-medium max-w-2xl">
-                  Real-time overview of your investment portfolio with
-                  comprehensive insights and performance metrics
+                <p className="text-xs text-gray-600 font-medium max-w-2xl">
+                  Real-time overview of your investment portfolio
                 </p>
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-2">
                 <button
                   onClick={fetchAnalytics}
-                  className="px-6 py-3 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition-all duration-200 font-semibold text-sm border border-blue-200"
+                  className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-all duration-200 font-bold text-xs"
                 >
-                  Refresh Analytics
+                  REFRESH
                 </button>
                 <button
-                  onClick={() =>
-                    setViewMode(viewMode === "grid" ? "table" : "grid")
-                  }
-                  className="px-6 py-3 bg-gray-50 text-gray-700 rounded-xl hover:bg-gray-100 transition-all duration-200 font-semibold text-sm border border-gray-200"
+                  onClick={() => setViewMode(viewMode === "grid" ? "table" : "grid")}
+                  className="px-4 py-2 bg-gray-800 text-white rounded hover:bg-gray-700 transition-all duration-200 font-bold text-xs"
                 >
-                  {viewMode === "grid" ? "Table View" : "Grid View"}
+                  {viewMode === "grid" ? "TABLE" : "GRID"}
                 </button>
               </div>
             </div>
           </div>
 
           {/* Main Analytics Cards */}
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-6 border border-blue-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-0">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="p-4 bg-blue-500 rounded-2xl shadow-lg">
+          <div className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+              <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 border-2 border-white p-3 hover:shadow-lg transition-all duration-300 overflow-hidden min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-2 bg-white/20 backdrop-blur-sm">
                     <svg
-                      className="w-8 h-8 text-white"
+                      className="w-4 h-4 text-white"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -337,23 +437,23 @@ const ListInvestmentProducts = ({ token }) => {
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-blue-700 mb-2 uppercase tracking-wide">
-                    Total Products
+                  <p className="text-xs font-bold text-white mb-1 uppercase tracking-wide">
+                    TOTAL PRODUCTS
                   </p>
-                  <p className="text-2xl font-bold text-blue-900 mb-1 truncate">
+                  <p className="text-xl font-bold text-white mb-1 truncate">
                     {analytics.totalProducts}
                   </p>
-                  <p className="text-sm text-blue-600 font-medium">
-                    Active portfolio items
+                  <p className="text-xs text-blue-100 font-medium">
+                    Active items
                   </p>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl p-6 border border-green-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-0">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="p-4 bg-green-500 rounded-2xl shadow-lg">
+              <div className="bg-gradient-to-br from-green-500 via-green-600 to-green-700 border-2 border-white p-3 hover:shadow-lg transition-all duration-300 overflow-hidden min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-2 bg-white/20 backdrop-blur-sm">
                     <svg
-                      className="w-8 h-8 text-white"
+                      className="w-4 h-4 text-white"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -368,23 +468,23 @@ const ListInvestmentProducts = ({ token }) => {
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-green-700 mb-2 uppercase tracking-wide">
-                    Total Funding
+                  <p className="text-xs font-bold text-white mb-1 uppercase tracking-wide">
+                    TOTAL FUNDING
                   </p>
-                  <p className="text-2xl font-bold text-green-900 mb-1 truncate">
+                  <p className="text-xl font-bold text-white mb-1 truncate">
                     {formatCurrency(analytics.totalFunding || 0)}
                   </p>
-                  <p className="text-sm text-green-600 font-medium">
-                    Combined investment value
+                  <p className="text-xs text-green-100 font-medium">
+                    Investment value
                   </p>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-6 border border-orange-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-0">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="p-4 bg-orange-500 rounded-2xl shadow-lg">
+              <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-orange-700 border-2 border-white p-3 hover:shadow-lg transition-all duration-300 overflow-hidden min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-2 bg-white/20 backdrop-blur-sm">
                     <svg
-                      className="w-8 h-8 text-white"
+                      className="w-4 h-4 text-white"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -399,23 +499,23 @@ const ListInvestmentProducts = ({ token }) => {
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-orange-700 mb-2 uppercase tracking-wide">
-                    Active Funding
+                  <p className="text-xs font-bold text-white mb-1 uppercase tracking-wide">
+                    ACTIVE FUNDING
                   </p>
-                  <p className="text-2xl font-bold text-orange-900 mb-1 truncate">
+                  <p className="text-xl font-bold text-white mb-1 truncate">
                     {analytics.activeFunding}
                   </p>
-                  <p className="text-sm text-orange-600 font-medium">
-                    Currently seeking funds
+                  <p className="text-xs text-orange-100 font-medium">
+                    Seeking funds
                   </p>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-6 border border-purple-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-0">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="p-4 bg-purple-500 rounded-2xl shadow-lg">
+              <div className="bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 border-2 border-white p-3 hover:shadow-lg transition-all duration-300 overflow-hidden min-w-0">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="p-2 bg-white/20 backdrop-blur-sm">
                     <svg
-                      className="w-8 h-8 text-white"
+                      className="w-4 h-4 text-white"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -430,58 +530,28 @@ const ListInvestmentProducts = ({ token }) => {
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-purple-700 mb-2 uppercase tracking-wide">
-                    Completed
+                  <p className="text-xs font-bold text-white mb-1 uppercase tracking-wide">
+                    COMPLETED
                   </p>
-                  <p className="text-2xl font-bold text-purple-900 mb-1 truncate">
+                  <p className="text-xl font-bold text-white mb-1 truncate">
                     {analytics.completedProjects}
                   </p>
-                  <p className="text-sm text-purple-600 font-medium">
+                  <p className="text-xs text-purple-100 font-medium">
                     Successfully funded
                   </p>
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-2xl p-6 border border-indigo-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 overflow-hidden min-w-0">
-                <div className="flex items-start justify-between mb-6">
-                  <div className="p-4 bg-indigo-500 rounded-2xl shadow-lg">
-                    <svg
-                      className="w-8 h-8 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                      ></path>
-                    </svg>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-indigo-700 mb-2 uppercase tracking-wide">
-                    Avg Funding
-                  </p>
-                  <p className="text-2xl font-bold text-indigo-900 mb-1 truncate">
-                    {formatCurrency(analytics.averageFunding || 0)}
-                  </p>
-                  <p className="text-sm text-indigo-600 font-medium">
-                    Per project average
-                  </p>
-                </div>
-              </div>
             </div>
 
             {/* Secondary Analytics Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
               {/* Category Distribution */}
-              <div className="bg-gray-50 rounded-2xl p-8 border border-gray-200">
-                <h3 className="text-2xl font-bold text-gray-900 mb-8">
-                  Category Distribution
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-black mb-3 uppercase tracking-wider">
+                  CATEGORY DISTRIBUTION
                 </h3>
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {Object.entries(
                     products.reduce((acc, product) => {
                       acc[product.category] = (acc[product.category] || 0) + 1;
@@ -490,21 +560,21 @@ const ListInvestmentProducts = ({ token }) => {
                   ).map(([category, count]) => (
                     <div
                       key={category}
-                      className="flex items-center justify-between py-2"
+                      className="flex items-center justify-between py-1"
                     >
-                      <span className="text-lg font-semibold text-gray-800">
+                      <span className="text-xs font-bold text-black uppercase">
                         {category}
                       </span>
-                      <div className="flex items-center gap-4 flex-1 ml-8">
-                        <div className="flex-1 bg-gray-200 rounded-full h-3 max-w-32">
+                      <div className="flex items-center gap-2 flex-1 ml-3">
+                        <div className="flex-1 bg-gray-300 h-1.5 max-w-16">
                           <div
-                            className="bg-blue-500 h-3 rounded-full transition-all duration-500"
+                            className="bg-black h-1.5 transition-all duration-500"
                             style={{
                               width: `${(count / products.length) * 100}%`,
                             }}
                           ></div>
                         </div>
-                        <span className="text-lg font-bold text-blue-600 min-w-8">
+                        <span className="text-xs font-bold text-black min-w-4">
                           {count}
                         </span>
                       </div>
@@ -514,11 +584,11 @@ const ListInvestmentProducts = ({ token }) => {
               </div>
 
               {/* Funding Status Overview */}
-              <div className="bg-gray-50 rounded-2xl p-8 border border-gray-200">
-                <h3 className="text-2xl font-bold text-gray-900 mb-8">
-                  Funding Status Overview
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h3 className="text-sm font-bold text-black mb-3 uppercase tracking-wider">
+                  FUNDING STATUS OVERVIEW
                 </h3>
-                <div className="space-y-6">
+                <div className="space-y-3">
                   {Object.entries(
                     products.reduce((acc, product) => {
                       acc[product.productStatus] =
@@ -528,29 +598,21 @@ const ListInvestmentProducts = ({ token }) => {
                   ).map(([status, count]) => (
                     <div
                       key={status}
-                      className="flex items-center justify-between py-2"
+                      className="flex items-center justify-between py-1"
                     >
-                      <span className="text-lg font-semibold text-gray-800 capitalize">
+                      <span className="text-xs font-bold text-black uppercase">
                         {status.replace("-", " ")}
                       </span>
-                      <div className="flex items-center gap-4 flex-1 ml-8">
-                        <div className="flex-1 bg-gray-200 rounded-full h-3 max-w-32">
+                      <div className="flex items-center gap-2 flex-1 ml-3">
+                        <div className="flex-1 bg-gray-300 h-1.5 max-w-16">
                           <div
-                            className={`h-3 rounded-full transition-all duration-500 ${
-                              status === "funding"
-                                ? "bg-blue-500"
-                                : status === "in-production"
-                                ? "bg-orange-500"
-                                : status === "completed"
-                                ? "bg-green-500"
-                                : "bg-red-500"
-                            }`}
+                            className="bg-black h-1.5 transition-all duration-500"
                             style={{
                               width: `${(count / products.length) * 100}%`,
                             }}
                           ></div>
                         </div>
-                        <span className="text-lg font-bold text-gray-700 min-w-8">
+                        <span className="text-xs font-bold text-black min-w-4">
                           {count}
                         </span>
                       </div>
@@ -561,12 +623,12 @@ const ListInvestmentProducts = ({ token }) => {
             </div>
 
             {/* Performance Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-8 border border-emerald-200 hover:shadow-lg transition-all duration-300">
-                <h4 className="text-lg font-bold text-emerald-800 mb-4 uppercase tracking-wide">
-                  Success Rate
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-white border-2 border-black p-4 hover:shadow-md transition-all duration-300">
+                <h4 className="text-xs font-bold text-black mb-1 uppercase tracking-wide">
+                  SUCCESS RATE
                 </h4>
-                <p className="text-5xl font-bold text-emerald-900 mb-3">
+                <p className="text-lg font-bold text-black mb-1">
                   {analytics.totalProducts > 0
                     ? (
                         (analytics.completedProjects /
@@ -576,16 +638,16 @@ const ListInvestmentProducts = ({ token }) => {
                     : 0}
                   %
                 </p>
-                <p className="text-base text-emerald-700 font-medium">
+                <p className="text-xs text-gray-600 font-medium">
                   Projects successfully funded
                 </p>
               </div>
 
-              <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-2xl p-8 border border-amber-200 hover:shadow-lg transition-all duration-300">
-                <h4 className="text-lg font-bold text-amber-800 mb-4 uppercase tracking-wide">
-                  Funding Efficiency
+              <div className="bg-white border-2 border-black p-4 hover:shadow-md transition-all duration-300">
+                <h4 className="text-xs font-bold text-black mb-1 uppercase tracking-wide">
+                  FUNDING EFFICIENCY
                 </h4>
-                <p className="text-5xl font-bold text-amber-900 mb-3">
+                <p className="text-lg font-bold text-black mb-1">
                   {analytics.totalProducts > 0
                     ? (
                         (analytics.activeFunding / analytics.totalProducts) *
@@ -594,23 +656,23 @@ const ListInvestmentProducts = ({ token }) => {
                     : 0}
                   %
                 </p>
-                <p className="text-base text-amber-700 font-medium">
+                <p className="text-xs text-gray-600 font-medium">
                   Currently seeking funds
                 </p>
               </div>
 
-              <div className="bg-gradient-to-br from-rose-50 to-rose-100 rounded-2xl p-8 border border-rose-200 hover:shadow-lg transition-all duration-300">
-                <h4 className="text-lg font-bold text-rose-800 mb-4 uppercase tracking-wide">
-                  Portfolio Value
+              <div className="bg-white border-2 border-black p-4 hover:shadow-md transition-all duration-300">
+                <h4 className="text-xs font-bold text-black mb-1 uppercase tracking-wide">
+                  PORTFOLIO VALUE
                 </h4>
-                <p className="text-5xl font-bold text-rose-900 mb-3">
+                <p className="text-lg font-bold text-black mb-1">
                   {analytics.totalProducts > 0
                     ? formatCurrency(
                         analytics.totalFunding / analytics.totalProducts
                       )
                     : formatCurrency(0)}
                 </p>
-                <p className="text-base text-rose-700 font-medium">
+                <p className="text-xs text-gray-600 font-medium">
                   Average project value
                 </p>
               </div>
@@ -682,8 +744,11 @@ const ListInvestmentProducts = ({ token }) => {
         </div>
 
         {/* Products Display */}
+        <div className="mb-4">
+          <p className="text-sm text-gray-600">Debug: Showing {products.length} products from state</p>
+        </div>
         {viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
             {products.map((product) => (
               <div
                 key={product._id}
@@ -726,11 +791,11 @@ const ListInvestmentProducts = ({ token }) => {
 
                 {/* Product Content */}
                 <div className="p-6">
-                  <div className="mb-4">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1 line-clamp-2">
+                  <div className="mb-3">
+                    <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2">
                       {product.productTitle}
                     </h3>
-                    <p className="text-gray-600 text-sm">
+                    <p className="text-gray-600 text-xs">
                       by {product.artistName}
                     </p>
                     <p className="text-gray-500 text-xs mt-1 line-clamp-2">
@@ -739,8 +804,8 @@ const ListInvestmentProducts = ({ token }) => {
                   </div>
 
                   {/* Funding Progress */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm mb-2">
+                  <div className="mb-3">
+                    <div className="flex justify-between text-xs mb-1">
                       <span className="text-gray-600">Progress</span>
                       <span className="font-semibold text-blue-600">
                         {calculateFundingPercentage(
@@ -750,9 +815,9 @@ const ListInvestmentProducts = ({ token }) => {
                         %
                       </span>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
                       <div
-                        className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-500"
+                        className="bg-gradient-to-r from-blue-500 to-green-500 h-1.5 rounded-full transition-all duration-500"
                         style={{
                           width: `${calculateFundingPercentage(
                             product.currentFunding || 0,
@@ -770,41 +835,41 @@ const ListInvestmentProducts = ({ token }) => {
                   </div>
 
                   {/* Category & Genre Tags */}
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-xs">
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
                       {product.category}
                     </span>
                     {product.genre && (
-                      <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs">
+                      <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
                         {product.genre}
                       </span>
                     )}
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <button
                       onClick={() => openDetailsModal(product)}
-                      className="flex-1 bg-blue-600 text-white py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                      className="flex-1 bg-blue-600 text-white py-1.5 px-2 rounded hover:bg-blue-700 transition-colors text-xs font-medium"
                     >
                       View Details
                     </button>
                     <button
                       onClick={() => openFundingModal(product)}
-                      className="flex-1 bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                      className="flex-1 bg-green-600 text-white py-1.5 px-2 rounded hover:bg-green-700 transition-colors text-xs font-medium"
                     >
                       Manage
                     </button>
                   </div>
 
                   {/* Quick Actions */}
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-2 flex gap-1">
                     <select
                       value={product.productStatus}
                       onChange={(e) =>
                         updateProductStatus(product._id, e.target.value)
                       }
-                      className="flex-1 py-1 px-2 rounded text-xs font-medium border border-gray-200 focus:ring-1 focus:ring-blue-500"
+                      className="flex-1 py-0.5 px-1 rounded text-xs font-medium border border-gray-200 focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="funding">Funding</option>
                       <option value="in-production">In Production</option>
@@ -816,7 +881,7 @@ const ListInvestmentProducts = ({ token }) => {
                       onClick={() =>
                         toggleFeatured(product._id, product.isFeatured)
                       }
-                      className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${
+                      className={`flex-1 py-0.5 px-1 rounded text-xs font-medium transition-colors ${
                         product.isFeatured
                           ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
                           : "bg-gray-100 text-gray-800 hover:bg-gray-200"
@@ -829,7 +894,7 @@ const ListInvestmentProducts = ({ token }) => {
                       onClick={() =>
                         toggleActive(product._id, product.isActive)
                       }
-                      className={`flex-1 py-1 px-2 rounded text-xs font-medium transition-colors ${
+                      className={`flex-1 py-0.5 px-1 rounded text-xs font-medium transition-colors ${
                         product.isActive
                           ? "bg-red-100 text-red-800 hover:bg-red-200"
                           : "bg-green-100 text-green-800 hover:bg-green-200"
@@ -849,19 +914,19 @@ const ListInvestmentProducts = ({ token }) => {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900 text-sm">
                       Product
                     </th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900 text-sm">
                       Category
                     </th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900 text-sm">
                       Status
                     </th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900 text-sm">
                       Funding
                     </th>
-                    <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900 text-sm">
                       Actions
                     </th>
                   </tr>
@@ -869,46 +934,46 @@ const ListInvestmentProducts = ({ token }) => {
                 <tbody className="divide-y divide-gray-200">
                   {products.map((product) => (
                     <tr key={product._id} className="hover:bg-gray-50">
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4">
                         <div className="flex items-center">
                           <img
                             src={product.coverImage || "/placeholder.png"}
                             alt={product.productTitle}
-                            className="w-12 h-12 rounded-lg object-cover mr-4"
+                            className="w-8 h-8 rounded object-cover mr-3"
                           />
                           <div>
-                            <div className="font-semibold text-gray-900">
+                            <div className="font-semibold text-gray-900 text-sm">
                               {product.productTitle}
                             </div>
-                            <div className="text-sm text-gray-600">
+                            <div className="text-xs text-gray-600">
                               by {product.artistName}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-md text-xs">
+                      <td className="py-3 px-4">
+                        <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
                           {product.category}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(
+                          className={`px-2 py-0.5 rounded-full text-xs font-semibold text-white ${getStatusColor(
                             product.productStatus
                           )}`}
                         >
                           {product.productStatus}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="text-sm">
+                      <td className="py-3 px-4">
+                        <div className="text-xs">
                           <div className="font-semibold text-green-600">
                             {formatCurrency(product.currentFunding || 0)}
                           </div>
                           <div className="text-gray-600">
                             of {formatCurrency(product.totalBudget)}
                           </div>
-                          <div className="w-20 bg-gray-200 rounded-full h-1 mt-1">
+                          <div className="w-16 bg-gray-200 rounded-full h-1 mt-1">
                             <div
                               className="bg-green-500 h-1 rounded-full"
                               style={{
@@ -921,17 +986,17 @@ const ListInvestmentProducts = ({ token }) => {
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="flex gap-2">
+                      <td className="py-3 px-4">
+                        <div className="flex gap-1">
                           <button
                             onClick={() => openDetailsModal(product)}
-                            className="bg-blue-100 text-blue-700 px-3 py-1 rounded text-xs hover:bg-blue-200"
+                            className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs hover:bg-blue-200"
                           >
                             View
                           </button>
                           <button
                             onClick={() => openFundingModal(product)}
-                            className="bg-green-100 text-green-700 px-3 py-1 rounded text-xs hover:bg-green-200"
+                            className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs hover:bg-green-200"
                           >
                             Manage
                           </button>
@@ -945,47 +1010,6 @@ const ListInvestmentProducts = ({ token }) => {
           </div>
         )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center mt-8">
-            <div className="flex gap-2">
-              <button
-                onClick={() => fetchProducts(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
-              >
-                ← Previous
-              </button>
-
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                const page = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
-                if (page > totalPages) return null;
-
-                return (
-                  <button
-                    key={page}
-                    onClick={() => fetchProducts(page)}
-                    className={`px-4 py-2 border rounded-lg ${
-                      currentPage === page
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "border-gray-300 hover:bg-gray-50"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                );
-              })}
-
-              <button
-                onClick={() => fetchProducts(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
-              >
-                Next →
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Empty State */}
         {products.length === 0 && !loading && (
@@ -1007,10 +1031,6 @@ const ListInvestmentProducts = ({ token }) => {
         )}
       </div>
 
-      {/* Auto-refresh Indicator */}
-      <div className="fixed bottom-4 right-4 bg-green-100 text-green-800 px-3 py-2 rounded-lg text-sm font-medium shadow-lg">
-        🔄 Auto-refresh every 30s
-      </div>
 
       {/* Modals - Funding and Details remain unchanged */}
       {showFundingModal && selectedProduct && (
@@ -1042,13 +1062,19 @@ const ListInvestmentProducts = ({ token }) => {
                 </label>
                 <input
                   type="number"
-                  value={fundingData.currentFunding}
+                  value={fundingData.currentFunding === 0 ? '' : fundingData.currentFunding}
                   onChange={(e) =>
                     setFundingData({
                       ...fundingData,
                       currentFunding: parseFloat(e.target.value) || 0,
                     })
                   }
+                  onFocus={(e) => {
+                    if (e.target.value === '0') {
+                      e.target.select();
+                    }
+                  }}
+                  placeholder="Enter funding amount"
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                   min="0"
                   max={selectedProduct.totalBudget}
@@ -1061,13 +1087,19 @@ const ListInvestmentProducts = ({ token }) => {
                 </label>
                 <input
                   type="number"
-                  value={fundingData.totalInvestors}
+                  value={fundingData.totalInvestors === 0 ? '' : fundingData.totalInvestors}
                   onChange={(e) =>
                     setFundingData({
                       ...fundingData,
                       totalInvestors: parseInt(e.target.value) || 0,
                     })
                   }
+                  onFocus={(e) => {
+                    if (e.target.value === '0') {
+                      e.target.select();
+                    }
+                  }}
+                  placeholder="Enter number of investors"
                   className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
                   min="0"
                 />
@@ -1391,6 +1423,88 @@ const ListInvestmentProducts = ({ token }) => {
           </div>
         </div>
       )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex flex-col items-center mt-8 space-y-4">
+          {/* Page Info */}
+          <div className="text-sm text-gray-600">
+            Showing {((currentPage - 1) * 500) + 1} to {Math.min(currentPage * 500, totalProducts || products.length)} of {totalProducts || products.length} products
+          </div>
+          
+          {/* Pagination Controls */}
+          <div className="flex items-center space-x-2">
+            {/* Previous Button */}
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 rounded-lg font-medium text-sm ${
+                currentPage === 1
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+              }`}
+            >
+              Previous
+            </button>
+
+            {/* Page Numbers */}
+            {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => {
+              let pageNum;
+              if (totalPages <= 10) {
+                pageNum = i + 1;
+              } else if (currentPage <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 4) {
+                pageNum = totalPages - 9 + i;
+              } else {
+                pageNum = currentPage - 4 + i;
+              }
+              
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => handlePageChange(pageNum)}
+                  className={`px-3 py-2 rounded-lg font-medium text-sm ${
+                    currentPage === pageNum
+                      ? "bg-blue-600 text-white"
+                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+
+            {/* Next Button */}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`px-4 py-2 rounded-lg font-medium text-sm ${
+                currentPage === totalPages
+                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+              }`}
+            >
+              Next
+            </button>
+          </div>
+          
+          {/* Page indicator */}
+          <div className="text-xs text-gray-500">
+            Page {currentPage} of {totalPages}
+          </div>
+        </div>
+      )}
+
+        {/* Loading Indicator for Navigation */}
+        {isNavigating && (
+          <div className="flex justify-center items-center mt-4">
+            <div className="flex items-center space-x-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              <span className="text-sm font-medium">Loading page {currentPage}...</span>
+            </div>
+          </div>
+        )}
 
       {/* Loading Overlay */}
       {loading && products.length > 0 && (

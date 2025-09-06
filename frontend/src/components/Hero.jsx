@@ -86,20 +86,17 @@ const Hero = () => {
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.2 }}
-                    className="text-4xl md:text-4xl lg:text-6xl mb-6"
+                    className="text-4xl md:text-6xl lg:text-8xl mb-6"
                   >
-                    WE DREAM WE CREATE WE PRESENT
+                    YOUR TITLE HERE
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
-                    className="text-xs sm:text-sm md:text-base text-center mb-6 max-w-2xl mx-auto"
+                    className="text-sm md:text-base lg:text-lg mb-8 max-w-3xl"
                   >
-                    Wellfire Media is where art, business, and bold imagination
-                    collide. We are a next-gen creative powerhouse building
-                    films, digital media, and lifestyle experiences that inspire
-                    and disrupt.
+                    YOUR SUBTITLE OR DESCRIPTION HERE
                   </motion.p>
                 </div>
               </motion.div>
@@ -108,14 +105,15 @@ const Hero = () => {
         </motion.section>
       )}
 
+      {/* Mobile Layout */}
       {isMobile && (
-        <div className="w-full h-screen relative">
+        <div className="w-full">
           {/* Video Section */}
           <motion.section
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1.2, ease: "easeOut" }}
-            className="relative w-full h-full flex items-center justify-center overflow-hidden"
+            className="relative w-full flex items-center justify-center overflow-hidden"
           >
             <video
               ref={videoRef}
@@ -124,36 +122,42 @@ const Hero = () => {
               loop
               muted
               playsInline
-              className="w-full h-full object-cover"
+              className="w-full h-auto object-contain"
             />
-            {/* Overlay for dark effect */}
-            <div className="absolute inset-0 bg-black/30 pointer-events-none"></div>
+            <div className="absolute inset-0 bg-black/10 pointer-events-none"></div>
+          </motion.section>
 
-            {/* Text Section Over Video */}
-            <AnimatePresence>
-              {showText && (
-                <div className="absolute bottom-18 w-full text-center px-4">
+          {/* Text Section Below Video */}
+          <AnimatePresence>
+            {showText && (
+              <motion.section
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -50 }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+                className="w-full bg-black text-white py-12 px-4"
+              >
+                <div className="text-center uppercase tracking-wider max-w-md mx-auto">
                   <motion.h1
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.2 }}
-                    className="text-white text-2xl sm:text-3xl font-bold mb-3 uppercase tracking-wider"
+                    className="text-2xl sm:text-3xl mb-4"
                   >
-                    WE DREAM WE CREATE WE PRESENT
+                    YOUR TITLE HERE
                   </motion.h1>
                   <motion.p
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.8, delay: 0.4 }}
-                    className="text-white text-sm sm:text-base max-w-xs mx-auto"
+                    className="text-xs sm:text-sm mb-6"
                   >
-                    At Wellfire, we don’t just make content. We create
-                    experiences that last.
+                    YOUR SUBTITLE OR DESCRIPTION HERE
                   </motion.p>
                 </div>
-              )}
-            </AnimatePresence>
-          </motion.section>
+              </motion.section>
+            )}
+          </AnimatePresence>
         </div>
       )}
     </div>

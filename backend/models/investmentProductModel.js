@@ -10,7 +10,7 @@ const investmentProductSchema = new mongoose.Schema({
     category: {
         type: String,
         required: true,
-        enum: ["Music", "Film", "Commercial", "Documentary", "Web Series", "Other"]
+        enum: ["Music", "Film", "Commercial", "Upcoming Projects", "Documentary", "Web Series", "Other"]
     },
     genre: {
         type: String,

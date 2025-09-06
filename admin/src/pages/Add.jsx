@@ -113,6 +113,7 @@ const AddInvestmentProduct = ({ token }) => {
     { value: "Commercial" },
     { value: "Documentary" },
     { value: "Web Series" },
+    { value: "Upcoming Projects" },
     { value: "Other" },
   ];
 

@@ -18,6 +18,11 @@ const Contact = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [savedDrafts, setSavedDrafts] = useState([]);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // Auto-save draft functionality
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -192,7 +197,7 @@ Application submitted on: ${new Date().toLocaleString()}
   };
 
   const handleWhatsApp = () => {
-    const message = `Hi! I'm interested in working with ZIPPIN Entertainment. My name is ${
+    const message = `Hi! I'm interested in working with WELLFIRE Entertainment. My name is ${
       formData.name || "[Your Name]"
     }.`;
     window.open(
@@ -203,7 +208,7 @@ Application submitted on: ${new Date().toLocaleString()}
 
   const handleQuickEmail = () => {
     window.location.href =
-      "mailto:info.wellfire@gmail.com?subject=Quick Inquiry - ZIPPIN Entertainment";
+      "mailto:info.wellfire@gmail.com?subject=Quick Inquiry - WELLFIRE Entertainment";
   };
 
   return (

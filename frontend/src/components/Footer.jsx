@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Instagram,
   Youtube,
@@ -14,6 +15,12 @@ import footerImg from "../assets/footer-image.jpg"; // ✅ replace with your act
 
 const Footer = () => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const navigate = useNavigate();
+
+  const handleNavigation = (path) => {
+    window.scrollTo(0, 0);
+    navigate(path);
+  };
 
   const testimonials = [
     {
@@ -130,22 +137,19 @@ const Footer = () => {
                 {[
                   { name: "About Us", href: "/about" },
                   { name: "Our Services", href: "/services" },
-                  { name: "Portfolio", href: "/portfolio" },
-                  { name: "Careers", href: "/careers" },
+                  { name: "Portfolio", href: "/photo" },
                   { name: "Contact", href: "/contact" },
-                  { name: "Blog", href: "/blog" },
                 ].map((link) => (
-                  <a
+                  <button
                     key={link.name}
-                    href={link.href}
-                    className="hover:text-red-400 transition-colors duration-300"
+                    onClick={() => handleNavigation(link.href)}
+                    className="hover:text-red-400 transition-colors duration-300 text-left"
                   >
                     {link.name}
-                  </a>
+                  </button>
                 ))}
               </div>
 
-             
             </div>
           </div>
 
@@ -160,21 +164,24 @@ const Footer = () => {
               © 2024 Wellfire Studio. Crafted for creative excellence.
             </p>
             <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-              <a
-                href="/privacy"
+              <button
+                onClick={() => handleNavigation('/privacy')}
                 className="hover:text-red-400 flex items-center gap-1"
               >
                 Privacy Policy <ExternalLink className="w-3 h-3" />
-              </a>
-              <a
-                href="/terms"
+              </button>
+              <button
+                onClick={() => handleNavigation('/terms')}
                 className="hover:text-red-400 flex items-center gap-1"
               >
                 Terms <ExternalLink className="w-3 h-3" />
-              </a>
-              <a href="/cookies" className="hover:text-red-400">
+              </button>
+              <button 
+                onClick={() => handleNavigation('/cookies')} 
+                className="hover:text-red-400"
+              >
                 Cookies
-              </a>
+              </button>
             </div>
           </div>
         </div>

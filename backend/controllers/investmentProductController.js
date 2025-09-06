@@ -90,7 +90,7 @@ const addInvestmentProduct = async(req, res) => {
         console.log("✅ Basic validation passed");
 
         // ✅ Normalize category to match allowed enum values
-        const allowedCategories = new Set(["Music", "Film", "Commercial", "Documentary", "Web Series", "Other"]);
+        const allowedCategories = new Set(["Music", "Film", "Commercial", "Upcoming Projects", "Documentary", "Web Series", "Other"]);
         const normalizeCategory = (value) => {
             if (!value || typeof value !== "string") return "Other";
             const trimmed = value.trim();
@@ -102,6 +102,7 @@ const addInvestmentProduct = async(req, res) => {
             if (lower === "commercial") return "Commercial";
             if (lower === "documentary") return "Documentary";
             if (lower === "web series" || lower === "webseries") return "Web Series";
+            if (lower === "upcoming projects" || lower === "upcoming") return "Upcoming Projects";
             // If exact match exists, keep it
             if (allowedCategories.has(trimmed)) return trimmed;
             return "Other";
@@ -367,7 +368,7 @@ const listInvestmentProducts = async(req, res) => {
             featured,
             active = "true",
             page = 1,
-            limit = 10,
+            limit = 500,
             sortBy = "createdAt",
             sortOrder = "desc"
         } = req.query;

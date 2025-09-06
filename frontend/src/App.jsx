@@ -7,6 +7,7 @@ import "react-toastify/dist/ReactToastify.css";
 import Footer from "./components/Footer";
 import Navbar from "./components/Navbar";
 import SearchBar from "./components/SearchBar";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Pages
 import Services from "./pages/Services";
@@ -23,10 +24,14 @@ import Product from "./pages/Product";
 import Verify from "./pages/Verify";
 import CategoryPage from "./pages/CategoryPage";
 import LatestCollection1 from "./components/LatestCollection1";
+import Photo from "./pages/Photo";
 
 const App = () => {
   return (
     <>
+      {/* ✅ Scroll to top on route change */}
+      <ScrollToTop />
+      
       {/* ✅ Toast Notification */}
       <ToastContainer
         position="top-center"
@@ -60,6 +65,7 @@ const App = () => {
           <Route path="/services" element={<Services />} />
           <Route path="/Latestcollection1" element={<LatestCollection1 />} />
           <Route path="/Latestcollection2" element={<LatestCollection2 />} />
+          <Route path="/photo" element={<Photo />} />
         </Routes>
 
         <Footer />

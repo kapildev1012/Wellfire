@@ -8,6 +8,11 @@ const Login = () => {
   const [mode, setMode] = useState("Login");
   const { token, setToken, navigate, backendUrl } = useContext(ShopContext);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");

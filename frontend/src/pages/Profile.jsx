@@ -17,6 +17,11 @@ const Profile = () => {
     address: "",
   });
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const logout = () => {
     localStorage.removeItem("token");
     setToken("");
