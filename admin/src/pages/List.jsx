@@ -1,5 +1,5 @@
 import axios from "axios";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { backendUrl } from "../App";
 
@@ -12,9 +12,9 @@ const ListInvestmentProducts = ({ token }) => {
   const [filters, setFilters] = useState({
     category: "",
     status: "",
-    featured: "",
-    active: "true",
   });
+  const [showStatusModal, setShowStatusModal] = useState(false);
+  const [statusData, setStatusData] = useState({ productStatus: "" });
 
   // Modal states
   const [showFundingModal, setShowFundingModal] = useState(false);
@@ -111,25 +111,6 @@ const ListInvestmentProducts = ({ token }) => {
   };
 
   // Update product actions
-  const updateProductStatus = async (productId, status) => {
-    try {
-      const response = await axios.put(
-        `${backendUrl}/api/investment-product/${productId}`,
-        { productStatus: status },
-        { headers: { token } }
-      );
-
-      if (response.data.success) {
-        toast.success("Product status updated successfully");
-        fetchProducts(currentPage);
-        fetchAnalytics();
-      } else {
-        toast.error(response.data.message);
-      }
-    } catch (error) {
-      toast.error("Failed to update status");
-    }
-  };
 
   const toggleFeatured = async (productId, isFeatured) => {
     try {
@@ -286,6 +267,57 @@ const ListInvestmentProducts = ({ token }) => {
     setShowDetailsModal(true);
   }
 
+  const openStatusModal = (product) => {
+    setSelectedProduct(product);
+    setStatusData({ productStatus: product.productStatus || "funding" });
+    setShowStatusModal(true);
+  };
+
+  const updateProductStatus = async (productId, newStatus) => {
+    try {
+      const response = await axios.put(
+        `${backendUrl}/api/investment-product/${productId}/status`,
+        { productStatus: newStatus },
+        { headers: { token } }
+      );
+
+      if (response.data.success) {
+        toast.success(`Product status updated to ${newStatus}!`);
+        fetchProducts(currentPage);
+        fetchAnalytics();
+        setShowStatusModal(false);
+      } else {
+        toast.error(response.data.message || "Failed to update product status");
+      }
+    } catch (error) {
+      console.error("Update product status error:", error);
+      toast.error("Failed to update product status. Please try again.");
+    }
+  };
+
+  const removeProduct = async (productId) => {
+    if (window.confirm("Are you sure you want to permanently delete this product? This action cannot be undone.")) {
+      try {
+        const response = await axios.delete(
+          `${backendUrl}/api/investment-product/${productId}`,
+          { headers: { token } }
+        );
+
+        if (response.data.success) {
+          toast.success("Product deleted successfully!");
+          fetchProducts(currentPage);
+          fetchAnalytics();
+        } else {
+          toast.error(response.data.message || "Failed to delete product");
+        }
+      } catch (error) {
+        console.error("Delete product error:", error);
+        toast.error("Failed to delete product. Please try again.");
+      }
+    }
+  };
+
+
   // Initialize from URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -298,9 +330,8 @@ const ListInvestmentProducts = ({ token }) => {
 
   // Auto-refresh products when filters change
   useEffect(() => {
-    if (searchTerm !== "" || Object.values(filters).some(filter => filter !== "" && filter !== "true")) {
-      fetchProducts(1);
-    }
+    // Always refresh when filters change, including when they're cleared
+    fetchProducts(1);
   }, [searchTerm, filters, fetchProducts]);
 
   // Keyboard navigation
@@ -647,34 +678,51 @@ const ListInvestmentProducts = ({ token }) => {
                 <h4 className="text-xs font-bold text-black mb-1 uppercase tracking-wide">
                   FUNDING EFFICIENCY
                 </h4>
-                <p className="text-lg font-bold text-black mb-1">
-                  {analytics.totalProducts > 0
-                    ? (
-                        (analytics.activeFunding / analytics.totalProducts) *
-                        100
-                      ).toFixed(1)
-                    : 0}
-                  %
-                </p>
-                <p className="text-xs text-gray-600 font-medium">
-                  Currently seeking funds
-                </p>
+                <div className="space-y-1">
+                  <div>
+                    <p className="text-sm font-bold text-purple-600">
+                      {products.length > 0
+                        ? (
+                            (products.reduce((total, product) => total + (product.currentFunding || 0), 0) /
+                            products.reduce((total, product) => total + (product.totalBudget || 0), 0)) *
+                            100
+                          ).toFixed(1)
+                        : 0}
+                      %
+                    </p>
+                    <p className="text-[10px] text-gray-500">Total Fund Efficiency</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-orange-600">
+                      {products.length > 0
+                        ? formatCurrency(
+                            products.reduce((total, product) => total + (product.totalBudget || 0), 0) / products.length
+                          )
+                        : formatCurrency(0)}
+                    </p>
+                    <p className="text-[10px] text-gray-500">Average Portfolio Value</p>
+                  </div>
+                </div>
               </div>
 
               <div className="bg-white border-2 border-black p-4 hover:shadow-md transition-all duration-300">
                 <h4 className="text-xs font-bold text-black mb-1 uppercase tracking-wide">
                   PORTFOLIO VALUE
                 </h4>
-                <p className="text-lg font-bold text-black mb-1">
-                  {analytics.totalProducts > 0
-                    ? formatCurrency(
-                        analytics.totalFunding / analytics.totalProducts
-                      )
-                    : formatCurrency(0)}
-                </p>
-                <p className="text-xs text-gray-600 font-medium">
-                  Average project value
-                </p>
+                <div className="space-y-1">
+                  <div>
+                    <p className="text-sm font-bold text-blue-600">
+                      {formatCurrency(products.reduce((total, product) => total + (product.totalBudget || 0), 0))}
+                    </p>
+                    <p className="text-[10px] text-gray-500">Total Portfolio Value</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-green-600">
+                      {formatCurrency(products.reduce((total, product) => total + (product.currentFunding || 0), 0))}
+                    </p>
+                    <p className="text-[10px] text-gray-500">Total Investment Received</p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -698,12 +746,14 @@ const ListInvestmentProducts = ({ token }) => {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-wrap gap-4 items-center">
               <select
                 value={filters.category}
-                onChange={(e) =>
-                  setFilters({ ...filters, category: e.target.value })
-                }
+                onChange={(e) => {
+                  const newFilters = { ...filters, category: e.target.value };
+                  setFilters(newFilters);
+                  setCurrentPage(1); // Reset to first page when filter changes
+                }}
                 className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Categories</option>
@@ -711,14 +761,17 @@ const ListInvestmentProducts = ({ token }) => {
                 <option value="Film">Film</option>
                 <option value="Documentary">Documentary</option>
                 <option value="Web Series">Web Series</option>
+                <option value="Upcoming Projects">Upcoming Projects</option>
                 <option value="Other">Other</option>
               </select>
 
               <select
                 value={filters.status}
-                onChange={(e) =>
-                  setFilters({ ...filters, status: e.target.value })
-                }
+                onChange={(e) => {
+                  const newFilters = { ...filters, status: e.target.value };
+                  setFilters(newFilters);
+                  setCurrentPage(1); // Reset to first page when filter changes
+                }}
                 className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Status</option>
@@ -728,42 +781,34 @@ const ListInvestmentProducts = ({ token }) => {
                 <option value="cancelled">Cancelled</option>
               </select>
 
-              <select
-                value={filters.featured}
-                onChange={(e) =>
-                  setFilters({ ...filters, featured: e.target.value })
-                }
-                className="px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Products</option>
-                <option value="true">Featured Only</option>
-                <option value="false">Not Featured</option>
-              </select>
+
             </div>
           </div>
         </div>
 
         {/* Products Display */}
         <div className="mb-4">
-          <p className="text-sm text-gray-600">Debug: Showing {products.length} products from state</p>
+          <p className="text-sm text-gray-600">Displaying {products.length} products</p>
         </div>
         {viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
             {products.map((product) => (
               <div
                 key={product._id}
-                className="bg-white rounded-xl shadow-md border border-gray-100 hover:shadow-xl transition-all duration-300 overflow-hidden"
+                className="bg-white rounded-xl shadow-lg border border-gray-100 hover:shadow-xl hover:scale-105 transition-all duration-300 overflow-hidden group"
               >
                 {/* Product Image */}
-                <div className="relative h-48 bg-gray-200">
+                <div className="relative h-48 bg-gradient-to-br from-gray-100 to-gray-200 overflow-hidden">
                   {product.coverImage ? (
-                    <img
-                      src={product.coverImage}
-                      alt={product.productTitle}
-                      className="w-full h-full object-cover"
-                    />
+                    <>
+                      <img
+                        src={product.coverImage}
+                        alt={product.productTitle}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400">
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs bg-gray-100">
                       No Image
                     </div>
                   )}
@@ -771,138 +816,111 @@ const ListInvestmentProducts = ({ token }) => {
                   {/* Status Badge */}
                   <div className="absolute top-3 left-3">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold text-white ${getStatusColor(
+                      className={`px-2 py-1 rounded-full text-[10px] font-semibold text-white shadow-lg ${getStatusColor(
                         product.productStatus
                       )}`}
                     >
-                      {product.productStatus}
+                      {product.productStatus.toUpperCase()}
                     </span>
                   </div>
 
                   {/* Featured Badge */}
                   {product.isFeatured && (
                     <div className="absolute top-3 right-3">
-                      <span className="bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-semibold">
-                        Featured
+                      <span className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2 py-1 rounded-full text-[10px] font-semibold shadow-lg">
+                        FEATURED
                       </span>
                     </div>
                   )}
+
                 </div>
 
                 {/* Product Content */}
-                <div className="p-6">
-                  <div className="mb-3">
-                    <h3 className="text-sm font-bold text-gray-900 mb-1 line-clamp-2">
+                <div className="p-4 space-y-3">
+                  <div className="space-y-1">
+                    <h3 className="text-xs font-bold text-gray-900 line-clamp-2 group-hover:text-blue-600 transition-colors">
                       {product.productTitle}
                     </h3>
-                    <p className="text-gray-600 text-xs">
+                    <p className="text-blue-600 text-[10px] font-semibold">
                       by {product.artistName}
                     </p>
-                    <p className="text-gray-500 text-xs mt-1 line-clamp-2">
-                      {product.description}
+                    <p className="text-gray-600 text-[10px]">
+                      {product.category}{product.genre && ` • ${product.genre}`}
                     </p>
                   </div>
 
                   {/* Funding Progress */}
-                  <div className="mb-3">
-                    <div className="flex justify-between text-xs mb-1">
-                      <span className="text-gray-600">Progress</span>
-                      <span className="font-semibold text-blue-600">
-                        {calculateFundingPercentage(
-                          product.currentFunding || 0,
-                          product.totalBudget
-                        ).toFixed(1)}
-                        %
-                      </span>
+                  <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-1 rounded border border-blue-100">
+                    <div className="text-[9px] text-gray-700 mb-1">
+                      <div>
+                        <span className="font-medium">Goal:</span>
+                        <span className="text-blue-600 font-semibold ml-1">
+                          {formatCurrency(product.totalBudget)}
+                        </span>
+                      </div>
+                      <div className="text-red-600 font-medium">
+                        {formatCurrency((product.totalBudget - (product.currentFunding || 0)).toFixed(0))} remaining
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1">
+                    <div className="w-full bg-white rounded-full h-2 shadow-inner hover:shadow-md transition-all duration-300 cursor-pointer">
                       <div
-                        className="bg-gradient-to-r from-blue-500 to-green-500 h-1.5 rounded-full transition-all duration-500"
+                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-500 hover:from-blue-600 hover:to-purple-600 hover:shadow-lg"
                         style={{
-                          width: `${calculateFundingPercentage(
+                          width: `${Math.max(1, calculateFundingPercentage(
                             product.currentFunding || 0,
                             product.totalBudget
-                          )}%`,
+                          ))}%`,
                         }}
                       ></div>
                     </div>
-                    <div className="flex justify-between text-xs text-gray-600">
-                      <span>
-                        {formatCurrency(product.currentFunding || 0)} raised
-                      </span>
-                      <span>Goal: {formatCurrency(product.totalBudget)}</span>
-                    </div>
                   </div>
 
-                  {/* Category & Genre Tags */}
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
-                      {product.category}
-                    </span>
-                    {product.genre && (
-                      <span className="px-1.5 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
-                        {product.genre}
-                      </span>
-                    )}
+
+                  {/* Product Status */}
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-gray-600 font-medium">Status:</span>
+                    <button
+                      onClick={() => openStatusModal(product)}
+                      className={`px-2 py-0.5 rounded-full text-[9px] font-semibold transition-all duration-200 hover:scale-105 ${
+                        product.productStatus === 'completed'
+                          ? "bg-green-100 text-green-800 hover:bg-green-200"
+                          : product.productStatus === 'funding'
+                          ? "bg-blue-100 text-blue-800 hover:bg-blue-200"
+                          : product.productStatus === 'in-production'
+                          ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {product.productStatus === 'completed' ? 'Completed' : 
+                       product.productStatus === 'funding' ? 'Funding' :
+                       product.productStatus === 'in-production' ? 'In Production' :
+                       product.productStatus === 'cancelled' ? 'Cancelled' :
+                       product.productStatus || 'Unknown'}
+                    </button>
                   </div>
 
                   {/* Action Buttons */}
-                  <div className="flex gap-1">
+                  <div className="flex gap-2">
                     <button
                       onClick={() => openDetailsModal(product)}
-                      className="flex-1 bg-blue-600 text-white py-1.5 px-2 rounded hover:bg-blue-700 transition-colors text-xs font-medium"
+                      className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white py-1 px-1.5 rounded text-[9px] font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
-                      View Details
+                      Details
                     </button>
                     <button
                       onClick={() => openFundingModal(product)}
-                      className="flex-1 bg-green-600 text-white py-1.5 px-2 rounded hover:bg-green-700 transition-colors text-xs font-medium"
+                      className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white py-1 px-1.5 rounded text-[9px] font-semibold hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
                       Manage
                     </button>
-                  </div>
-
-                  {/* Quick Actions */}
-                  <div className="mt-2 flex gap-1">
-                    <select
-                      value={product.productStatus}
-                      onChange={(e) =>
-                        updateProductStatus(product._id, e.target.value)
-                      }
-                      className="flex-1 py-0.5 px-1 rounded text-xs font-medium border border-gray-200 focus:ring-1 focus:ring-blue-500"
-                    >
-                      <option value="funding">Funding</option>
-                      <option value="in-production">In Production</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-
                     <button
-                      onClick={() =>
-                        toggleFeatured(product._id, product.isFeatured)
-                      }
-                      className={`flex-1 py-0.5 px-1 rounded text-xs font-medium transition-colors ${
-                        product.isFeatured
-                          ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                      }`}
+                      onClick={() => removeProduct(product._id)}
+                      className="flex-1 bg-gradient-to-r from-red-600 to-red-700 text-white py-1 px-1.5 rounded text-[9px] font-semibold hover:from-red-700 hover:to-red-800 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
-                      {product.isFeatured ? "Unfeature" : "Feature"}
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        toggleActive(product._id, product.isActive)
-                      }
-                      className={`flex-1 py-0.5 px-1 rounded text-xs font-medium transition-colors ${
-                        product.isActive
-                          ? "bg-red-100 text-red-800 hover:bg-red-200"
-                          : "bg-green-100 text-green-800 hover:bg-green-200"
-                      }`}
-                    >
-                      {product.isActive ? "Deactivate" : "Activate"}
+                      Delete
                     </button>
                   </div>
+
                 </div>
               </div>
             ))}
@@ -1191,6 +1209,69 @@ const ListInvestmentProducts = ({ token }) => {
               </button>
               <button
                 onClick={() => setShowFundingModal(false)}
+                className="flex-1 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Update Modal */}
+      {showStatusModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-900">
+                Update Status
+              </h3>
+              <button
+                onClick={() => setShowStatusModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Product: {selectedProduct.productTitle}
+                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Current Status: <span className="capitalize">{selectedProduct.productStatus?.replace("-", " ")}</span>
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  New Status
+                </label>
+                <select
+                  value={statusData.productStatus}
+                  onChange={(e) => setStatusData({ productStatus: e.target.value })}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="funding">Funding</option>
+                  <option value="in-production">In Production</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => {
+                  updateProductStatus(selectedProduct._id, statusData.productStatus);
+                }}
+                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all font-semibold"
+              >
+                Update Status
+              </button>
+              <button
+                onClick={() => setShowStatusModal(false)}
                 className="flex-1 bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
               >
                 Cancel

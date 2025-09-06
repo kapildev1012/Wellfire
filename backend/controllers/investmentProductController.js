@@ -366,7 +366,7 @@ const listInvestmentProducts = async(req, res) => {
             category,
             status,
             featured,
-            active = "true",
+            active,
             page = 1,
             limit = 500,
             sortBy = "createdAt",
@@ -377,7 +377,7 @@ const listInvestmentProducts = async(req, res) => {
         if (category) filter.category = category;
         if (status) filter.productStatus = status;
         if (featured !== undefined) filter.isFeatured = featured === "true";
-        if (active !== undefined) filter.isActive = active === "true";
+        if (active !== undefined && active !== "") filter.isActive = active === "true";
 
         const sort = {};
         sort[sortBy] = sortOrder === "desc" ? -1 : 1;
@@ -517,6 +517,9 @@ const removeInvestmentProduct = async(req, res) => {
     try {
         const { id } = req.params;
 
+        console.log("🗑️ Permanently deleting product:", id);
+
+        // Check for active investments
         const activeInvestors = await Investor.find({
             productId: id,
             paymentStatus: "completed",
@@ -529,12 +532,22 @@ const removeInvestmentProduct = async(req, res) => {
             });
         }
 
+        // Permanently delete all related data
         await Investor.deleteMany({ productId: id });
-        await InvestmentProduct.findByIdAndDelete(id);
+        const deletedProduct = await InvestmentProduct.findByIdAndDelete(id);
+
+        if (!deletedProduct) {
+            return res.status(404).json({
+                success: false,
+                message: "Product not found"
+            });
+        }
+
+        console.log("✅ Product permanently deleted from database");
 
         res.json({
             success: true,
-            message: "Investment product removed successfully"
+            message: "Investment product permanently deleted"
         });
     } catch (error) {
         console.error("Remove investment product error:", error);
@@ -544,15 +557,18 @@ const removeInvestmentProduct = async(req, res) => {
 
 const getFundingAnalytics = async(req, res) => {
     try {
-        const totalProducts = await InvestmentProduct.countDocuments();
+        // Count only active products (not deleted ones)
+        const totalProducts = await InvestmentProduct.countDocuments({ isActive: true });
         const activeProducts = await InvestmentProduct.countDocuments({
             isActive: true
         });
         const fundingProducts = await InvestmentProduct.countDocuments({
-            productStatus: "funding"
+            productStatus: "funding",
+            isActive: true
         });
         const completedProducts = await InvestmentProduct.countDocuments({
-            productStatus: "completed"
+            productStatus: "completed",
+            isActive: true
         });
 
         // Calculate total funding from InvestmentProduct currentFunding (more accurate)
